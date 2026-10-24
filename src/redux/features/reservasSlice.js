@@ -6,28 +6,28 @@ const reservaSlice = createSlice({
     name: "reservaSlice",
     initialState,
     reducers: {
-        // cargarTareasInicialesSlice: (state, action) => {
-        //     const listaTareas = action.payload;
-        //     return listaTareas;
+        // cargarReservasInicialesSlice: (state, action) => {
+        //     const listaReservas = action.payload;
+        //     return listaReservas;
         // },
         // changeCheckedSlice: (state, action) => {
         //     const { id, checked } = action.payload;
-        //     console.log(`Tarea ${id} - ${checked}`);
-        //     state.find((tarea) => tarea.id === id).completed = checked; //validar que encontro la tarea
+        //     console.log(`Reserva ${id} - ${checked}`);
+        //     state.find((reserva) => reserva.id === id).completed = checked; //validar que encontro la reserva
         // },
-        // agregarTareaSlice: (state, action) => {
-        //     const tarea = action.payload;
-        //     state.push(tarea)
+        // agregarReservaSlice: (state, action) => {
+        //     const reserva = action.payload;
+        //     state.push(reserva)
         // },
-        // borrarTareaSlice: (state, action) => {
+        // borrarReservaSlice: (state, action) => {
         //     const id = action.payload;
-        //     const stateAux = state.filter((tarea) => tarea.id !== id);
+        //     const stateAux = state.filter((reserva) => reserva.id !== id);
         //     return stateAux;
         // },
     },
 });
 
 
-export const { cargarTareasInicialesSlice, changeCheckedSlice, agregarTareaSlice, borrarTareaSlice } =
+export const { cargarReservasInicialesSlice, changeCheckedSlice, agregarReservaSlice, borrarReservaSlice } =
     reservaSlice.actions;
 export default reservaSlice.reducer;
