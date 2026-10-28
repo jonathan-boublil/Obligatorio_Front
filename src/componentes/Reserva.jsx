@@ -76,6 +76,13 @@ const reservaVacia = {
     email: "",
 };
 
+// reserva vacía con el nombre y email del usuario logueado ya cargados
+const reservaInicial = (usuario) => ({
+    ...reservaVacia,
+    nombre: usuario?.name ?? "",
+    email: usuario?.email ?? "",
+});
+
 // campos que tienen que estar completos para pasar de cada paso
 const camposPorPaso = {
     1: ["servicio"],
@@ -112,9 +119,9 @@ const obtenerFechasDisponibles = () => {
     return fechas;
 };
 
-const Reserva = () => {
+const Reserva = ({ usuario }) => {
     const [pasoActual, setPasoActual] = useState(1);
-    const [valores, setValores] = useState(reservaVacia);
+    const [valores, setValores] = useState(reservaInicial(usuario));
     const [errorFecha, setErrorFecha] = useState("");
     const [confirmada, setConfirmada] = useState(false);
 
@@ -122,20 +129,29 @@ const Reserva = () => {
     const fechaMinima = fechasDisponibles[0];
     const fechaMaxima = fechasDisponibles[fechasDisponibles.length - 1];
 
+    //cuando el usuario inicia o cierra sesión se actualizan nombre y email
+    useEffect(() => {
+        setValores((valoresActuales) => ({
+            ...valoresActuales,
+            nombre: usuario?.name ?? "",
+            email: usuario?.email ?? "",
+        }));
+    }, [usuario]);
+
     //a los 3 segundos de confirmar vuelve al paso 1 con el formulario vacío
     useEffect(() => {
         if (!confirmada) return;
 
         const timer = setTimeout(() => {
             setConfirmada(false);
-            setValores(reservaVacia);
+            setValores(reservaInicial(usuario));
             setPasoActual(1);
         }, 3000);
 
         return () => {
             clearTimeout(timer);
         };
-    }, [confirmada]);
+    }, [confirmada, usuario]);
 
     const cambiarValor = (name, value) => {
         const auxValores = { ...valores };
