@@ -1,6 +1,15 @@
+import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-const Header = () => {
+const Header = ({estaLogueado, onLogout}) => {
+  const navigate = useNavigate();
+
+  const handlerLogout = () => {
+    window.localStorage.clear();
+    onLogout()
+    navigate("/");
+  };
+
   return (
     <header className="site-header">
       <nav
@@ -50,18 +59,33 @@ const Header = () => {
                   Reservas
                 </button>
               </li>
-
-              <li className="nav-item">
-                <button className="nav-link" type="button">
+              {!estaLogueado ? (
+                <>
+                  <li className="nav-item">
+                 <NavLink className="nav-link" to="/register">
                   Registro
-                </button>
+                </NavLink>
               </li>
 
               <li className="nav-item">
-                <button className="nav-link" type="button">
+                <NavLink className="nav-link" to="/login">
                   Login
-                </button>
+                </NavLink>
               </li>
+                </>
+                ): (
+                  <li className="nav-item">
+                  <button
+                    className="nav-link"
+                    type="button"
+                    onClick={handlerLogout}
+                  >
+                    Logout
+                  </button>
+                </li>
+
+                )}
+              
             </ul>
           </div>
         </div>
