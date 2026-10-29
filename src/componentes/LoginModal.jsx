@@ -12,9 +12,15 @@ const LoginModal = ({onLogin}) => {
 
     const [mensajeError, setMensajeError] = useState("");
 
+    const formularioCompleto = 
+      valores.identificador !=="" &&
+      valores.password !==""; 
+
+
     const onSubmit = async (e) => {
         e.preventDefault();
         setMensajeError("");
+
 
         try {
             const resultado = await loginApi(valores);
@@ -134,6 +140,7 @@ const LoginModal = ({onLogin}) => {
                   className="btn btn-success"
                   type="submit"
                   onClick={onSubmit}
+                  disabled={!formularioCompleto}
                 >
                   Ingresar
                 </button>

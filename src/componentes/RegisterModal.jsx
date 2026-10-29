@@ -15,6 +15,17 @@ export const RegisterModal = ({onLogin}) => {
 
    const [mensajeError, setMensajeError] = useState("");
 
+  const formularioCompleto = 
+      valores.name !=="" &&
+      valores.username !=="" &&
+      valores.email !=="" &&
+      valores.password !=="" &&
+      valores.confirmPassword !=="";
+
+  const formularioValido = 
+    formularioCompleto && 
+    valores.password === valores.confirmPassword;
+
    const onSubmit = async (event) => {
         event.preventDefault();
 
@@ -208,6 +219,7 @@ export const RegisterModal = ({onLogin}) => {
                   className="btn btn-success"
                   type="submit"
                   onClick={onSubmit}
+                  disabled={!formularioValido}
                 >
                   Registrarme
                 </button>
