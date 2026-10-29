@@ -4,6 +4,7 @@ import Hero from './componentes/Hero';
 import LoginModal from './componentes/LoginModal';
 import Professionals from './componentes/Professionals';
 import Services from './componentes/Services';
+import { RegisterModal } from './componentes/RegisterModal';
 
 
 function App({modalActivo}) {
@@ -24,6 +25,7 @@ function App({modalActivo}) {
       <Header estaLogueado={estaLogueado} onLogout={logoutCorrecto}/>
       {/* LoginModal se agrega aca para que el modal aparezca en la pantalla principal */}
       {modalActivo === "login" && <LoginModal onLogin={loginCorrecto}/> }
+      {modalActivo === "registro" && <RegisterModal onLogin={loginCorrecto}/> }
 
       <main>
         <Hero/>

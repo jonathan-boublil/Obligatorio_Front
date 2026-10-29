@@ -10,8 +10,12 @@ const LoginModal = ({onLogin}) => {
         password: "",
     });
 
+    const [mensajeError, setMensajeError] = useState("");
+
     const onSubmit = async (e) => {
         e.preventDefault();
+        setMensajeError("");
+
         try {
             const resultado = await loginApi(valores);
             const token = resultado.token;
@@ -22,6 +26,20 @@ const LoginModal = ({onLogin}) => {
             navigate("/#profesionales")
         } catch (error) {
             console.error(error);
+
+            const respuesta = error.response?.data;
+
+            if (respuesta?.errors?.length > 0) {
+                const mensajes = respuesta.errors
+                    .map((error) => error.message)
+                    .join(". ");
+
+                setMensajeError(mensajes);
+            } else {
+                setMensajeError(
+                    respuesta?.message || "No se pudo completar el registro.",
+                );
+            };
         }
     };
 
@@ -66,6 +84,13 @@ const LoginModal = ({onLogin}) => {
             </div>
 
             <div className="modal-body">
+              
+              {mensajeError && (
+                    <div className="alert alert-danger" role="alert">
+                        {mensajeError}
+                    </div>
+                )}
+
               <form>
                 <div className="mb-3">
                   <label
