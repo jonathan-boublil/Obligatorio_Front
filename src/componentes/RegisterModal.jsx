@@ -1,9 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useDispatch } from 'react-redux';
+import { mostrarErrorSlice } from '../redux/features/errorSlice';
+import { obtenerMensajeError } from '../services/mensajeError';
 import { registerApi } from '../services/authServices';
 
 export const RegisterModal = ({onLogin}) => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [valores, setValores] = useState({
         name: "",
@@ -12,8 +16,6 @@ export const RegisterModal = ({onLogin}) => {
         password: "",
         confirmPassword: "",
     });
-
-   const [mensajeError, setMensajeError] = useState("");
 
   const formularioCompleto = 
       valores.name !=="" &&
@@ -29,33 +31,27 @@ export const RegisterModal = ({onLogin}) => {
    const onSubmit = async (event) => {
         event.preventDefault();
 
-        setMensajeError("");
-
         try {
             const resultado = await registerApi(valores);
             const token = resultado.token;
 
             window.localStorage.setItem("token", token);
 
-            onLogin();
+            //se guardan los datos del usuario igual que en el login
+            const usuario = {
+                name: resultado.user.name,
+                username: resultado.user.username,
+                email: resultado.user.email,
+                plan: resultado.user.plan,
+                role: resultado.user.role,
+            };
+            window.localStorage.setItem("usuario", JSON.stringify(usuario));
+            onLogin(usuario);
 
             navigate("/#profesionales");
         } catch (error) {
-            console.error(error);
-
-            const respuesta = error.response?.data;
-
-            if (respuesta?.errors?.length > 0) {
-                const mensajes = respuesta.errors
-                    .map((error) => error.message)
-                    .join(". ");
-
-                setMensajeError(mensajes);
-            } else {
-                setMensajeError(
-                    respuesta?.message || "No se pudo completar el registro.",
-                );
-            };
+            console.error(error.response?.data ?? error);
+            dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
         };
     };
 
@@ -100,14 +96,7 @@ export const RegisterModal = ({onLogin}) => {
             </div>
 
             <div className="modal-body">
-                
-                {mensajeError && (
-                    <div className="alert alert-danger" role="alert">
-                        {mensajeError}
-                    </div>
-                )}
-
-              <form>
+              <form onSubmit={onSubmit}>
                 <div className="mb-3">
                   <label
                     className="form-label"
@@ -218,7 +207,6 @@ export const RegisterModal = ({onLogin}) => {
                 <button
                   className="btn btn-success"
                   type="submit"
-                  onClick={onSubmit}
                   disabled={!formularioValido}
                 >
                   Registrarme

@@ -1,16 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { mostrarErrorSlice } from "../redux/features/errorSlice";
+import { obtenerMensajeError } from "../services/mensajeError";
 import { loginApi } from '../services/authServices';
 
 const LoginModal = ({onLogin}) => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [valores, setValores] = useState({
         identificador: "",
         password: "",
     });
-
-    const [mensajeError, setMensajeError] = useState("");
 
     const formularioCompleto = 
       valores.identificador !=="" &&
@@ -19,33 +21,44 @@ const LoginModal = ({onLogin}) => {
 
     const onSubmit = async (e) => {
         e.preventDefault();
-        setMensajeError("");
 
+        //se valida antes de llamar al back (los intentos fallidos cuentan para el límite de login)
+        const errores = [];
+        if (valores.identificador.trim() === "") {
+            errores.push("- usuario no puede estar vacío");
+        }
+        if (valores.password === "") {
+            errores.push("- password no puede estar vacío");
+        }
+        if (errores.length > 0) {
+            dispatch(mostrarErrorSlice(`Datos inválidos\n${errores.join("\n")}`));
+            return;
+        }
 
         try {
-            const resultado = await loginApi(valores);
+            const resultado = await loginApi({
+                ...valores,
+                identificador: valores.identificador.trim(),
+            });
             const token = resultado.token;
 
             console.log("token", token);
             window.localStorage.setItem("token", token);
-            onLogin();
+
+            //se guardan los datos del usuario que se muestran en el front
+            const usuario = {
+                name: resultado.user.name,
+                username: resultado.user.username,
+                email: resultado.user.email,
+                plan: resultado.user.plan,
+                role: resultado.user.role,
+            };
+            window.localStorage.setItem("usuario", JSON.stringify(usuario));
+            onLogin(usuario);
             navigate("/#profesionales")
         } catch (error) {
-            console.error(error);
-
-            const respuesta = error.response?.data;
-
-            if (respuesta?.errors?.length > 0) {
-                const mensajes = respuesta.errors
-                    .map((error) => error.message)
-                    .join(". ");
-
-                setMensajeError(mensajes);
-            } else {
-                setMensajeError(
-                    respuesta?.message || "No se pudo completar el registro.",
-                );
-            };
+            console.error(error.response?.data ?? error);
+            dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
         }
     };
 
@@ -69,7 +82,7 @@ const LoginModal = ({onLogin}) => {
         tabIndex="-1"
         role="dialog"
         aria-labelledby="loginModalTitle"
-        aria-model="true"
+        aria-modal="true"
       >
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
@@ -90,14 +103,7 @@ const LoginModal = ({onLogin}) => {
             </div>
 
             <div className="modal-body">
-              
-              {mensajeError && (
-                    <div className="alert alert-danger" role="alert">
-                        {mensajeError}
-                    </div>
-                )}
-
-              <form>
+              <form onSubmit={onSubmit}>
                 <div className="mb-3">
                   <label
                     className="form-label"
@@ -139,7 +145,6 @@ const LoginModal = ({onLogin}) => {
                 <button
                   className="btn btn-success"
                   type="submit"
-                  onClick={onSubmit}
                   disabled={!formularioCompleto}
                 >
                   Ingresar

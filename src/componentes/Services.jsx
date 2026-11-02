@@ -59,20 +59,13 @@ const services = [
   },
   {
     id: 2,
-    title: "Cirugía veterinaria",
+    title: "Baño",
     description:
-      "Realizamos cirugías seguras y profesionales, desde procedimientos de rutina hasta intervenciones complejas, priorizando siempre la salud y recuperación de tu mascota.",
-    icon: <HeartIcon />,
-  },
-  {
-    id: 3,
-    title: "Corte de uñas e higiene básica",
-    description:
-      "Ofrecemos servicios de higiene esencial para tu mascota, incluyendo corte de uñas, limpieza de oídos y cuidados básicos. Garantizamos comodidad y bienestar en cada sesión, con atención profesional y segura.",
+      "Ofrecemos servicios de higiene esencial para tu mascota incluido limpieza de oídos. Garantizamos comodidad y bienestar en cada sesión, con atención profesional y segura.",
     icon: <ScissorsIcon />,
   },
   {
-    id: 4,
+    id: 3,
     title: "Corte de pelo y estilismo",
     description:
       "Ofrecemos cortes de pelo y estilismo profesional para mascotas, adaptados a cada raza y necesidad. Garantizamos comodidad, higiene y una apariencia cuidada, siempre con atención especializada.",
@@ -90,7 +83,7 @@ const Services = () => {
           <p>Todo lo que tu mascota necesita para una vida sana y feliz</p>
         </div>
 
-        <div className="row g-4">
+        <div className="row g-4 justify-content-center">
           {services.map((service) => (
             <div className="col-12 col-md-6" key={service.id}>
               <article className="service-card">

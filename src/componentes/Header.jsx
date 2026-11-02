@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-const Header = ({estaLogueado, onLogout}) => {
+const Header = ({estaLogueado, esAdmin, onLogout}) => {
   const navigate = useNavigate();
 
   const handlerLogout = () => {
@@ -54,11 +54,34 @@ const Header = ({estaLogueado, onLogout}) => {
                 </a>
               </li>
 
-              <li className="nav-item">
-                <button className="nav-link" type="button">
-                  Reservas
-                </button>
-              </li>
+              {estaLogueado && (
+                <li className="nav-item">
+                  <a className="nav-link" href="#reservas">
+                    Reservas
+                  </a>
+                </li>
+              )}
+              {estaLogueado && (
+                <li className="nav-item">
+                  {/* el admin ve la agenda del día en lugar de sus datos */}
+                  {esAdmin ? (
+                    <NavLink className="nav-link" to="/agenda">
+                      Agenda
+                    </NavLink>
+                  ) : (
+                    <NavLink className="nav-link" to="/mis-datos">
+                      Mis datos
+                    </NavLink>
+                  )}
+                </li>
+              )}
+              {estaLogueado && esAdmin && (
+                <li className="nav-item">
+                  <NavLink className="nav-link" to="/informes">
+                    Informes
+                  </NavLink>
+                </li>
+              )}
               {!estaLogueado ? (
                 <>
                   <li className="nav-item">
