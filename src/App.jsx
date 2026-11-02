@@ -10,6 +10,7 @@ import Professionals from './componentes/Professionals';
 import Services from './componentes/Services';
 import Contacto from './componentes/Contacto';
 import Reserva from './componentes/Reserva';
+import { RegisterModal } from './componentes/RegisterModal';
 
 
 function App({ modalActivo }) {
@@ -43,6 +44,7 @@ function App({ modalActivo }) {
       <Header estaLogueado={estaLogueado} esAdmin={esAdmin} onLogout={logoutCorrecto} />
       {/* LoginModal se agrega aca para que el modal aparezca en la pantalla principal */}
       {modalActivo === "login" && <LoginModal onLogin={loginCorrecto} />}
+      {modalActivo === "registro" && <RegisterModal onLogin={loginCorrecto} />}
       {modalActivo === "misDatos" && usuario && !esAdmin && <MisDatosModal usuario={usuario} onActualizarUsuario={actualizarUsuario} />}
       {modalActivo === "agenda" && esAdmin && <AgendaModal />}
       {modalActivo === "informes" && esAdmin && <InformesModal />}

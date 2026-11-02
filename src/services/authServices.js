@@ -29,11 +29,20 @@ api.interceptors.response.use(
     }
 );
 
-//verificar que se manda en este formato 
 export const loginApi = async (dataLogin) => {
     // Ahi el api.post ya lleva el header con el token que se agrego en el interceptor
     const resultado = await api.post("/auth/login", dataLogin);
     console.log('resultadoAPI', resultado.data)
+    return resultado.data;
+}
+
+export const registerApi = async (dataregister) => {
+    const resultado = await api.post(
+        "/auth/register",
+        dataregister,
+    );
+    console.log("resultadoRegistro", resultado);
+
     return resultado.data;
 }
 

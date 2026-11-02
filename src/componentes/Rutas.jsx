@@ -1,6 +1,5 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import LoginModal from "./LoginModal.jsx";
 import App from "../App.jsx";
 
 const Rutas = () => {
@@ -12,7 +11,7 @@ const Rutas = () => {
             <Route path="/mis-datos" element={<App modalActivo="misDatos" />}></Route>
             <Route path="/agenda" element={<App modalActivo="agenda" />}></Route>
             <Route path="/informes" element={<App modalActivo="informes" />}></Route>
-            {/* <Route path="/register" element={<App modalActivo="registro" />}></Route> */}
+            <Route path="/register" element={<App modalActivo="registro" />}></Route>
             <Route
                 path="*"
                 element={<Navigate to="/" replace></Navigate>}

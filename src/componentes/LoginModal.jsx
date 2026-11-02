@@ -14,6 +14,11 @@ const LoginModal = ({onLogin}) => {
         password: "",
     });
 
+    const formularioCompleto = 
+      valores.identificador !=="" &&
+      valores.password !==""; 
+
+
     const onSubmit = async (e) => {
         e.preventDefault();
 
@@ -140,6 +145,7 @@ const LoginModal = ({onLogin}) => {
                 <button
                   className="btn btn-success"
                   type="submit"
+                  disabled={!formularioCompleto}
                 >
                   Ingresar
                 </button>
