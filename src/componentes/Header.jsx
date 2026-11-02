@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-const Header = ({estaLogueado, onLogout}) => {
+const Header = ({estaLogueado, esAdmin, onLogout}) => {
   const navigate = useNavigate();
 
   const handlerLogout = () => {
@@ -63,8 +63,22 @@ const Header = ({estaLogueado, onLogout}) => {
               )}
               {estaLogueado && (
                 <li className="nav-item">
-                  <NavLink className="nav-link" to="/mis-datos">
-                    Mis datos
+                  {/* el admin ve la agenda del día en lugar de sus datos */}
+                  {esAdmin ? (
+                    <NavLink className="nav-link" to="/agenda">
+                      Agenda
+                    </NavLink>
+                  ) : (
+                    <NavLink className="nav-link" to="/mis-datos">
+                      Mis datos
+                    </NavLink>
+                  )}
+                </li>
+              )}
+              {estaLogueado && esAdmin && (
+                <li className="nav-item">
+                  <NavLink className="nav-link" to="/informes">
+                    Informes
                   </NavLink>
                 </li>
               )}

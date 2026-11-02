@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { mostrarErrorSlice } from "../redux/features/errorSlice";
+import { obtenerMensajeError } from "../services/mensajeError";
 import { cambiarPlanApi, listarReservasApi } from "../services/userServices";
 
 // la fecha viene en UTC desde el back, se muestra tal cual sin correrla por la zona horaria
@@ -9,11 +12,11 @@ const formatearFecha = (fecha) => {
 
 const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // "datos" | "confirmarPlan" | "reservas"
   const [vista, setVista] = useState("datos");
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState("");
   const [reservas, setReservas] = useState([]);
 
   const esPremium = usuario.plan?.toLowerCase() === "premium";
@@ -26,40 +29,39 @@ const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
 
     const cargarReservas = async () => {
       setCargando(true);
-      setError("");
       try {
         const lista = await listarReservasApi();
         setReservas(lista);
       } catch (error) {
         console.error(error.response?.data ?? error);
-        setError("No se pudieron cargar las reservas.");
+        dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
+        //si no se pudieron cargar se vuelve a los datos
+        setVista("datos");
       } finally {
         setCargando(false);
       }
     };
 
     cargarReservas();
-  }, [vista]);
+  }, [vista, dispatch]);
 
   const cerrarModal = () => {
     navigate("/");
   };
 
   const volverADatos = () => {
-    setError("");
     setVista("datos");
   };
 
   const aceptarCambioPlan = async () => {
     setCargando(true);
-    setError("");
     try {
       const usuarioActualizado = await cambiarPlanApi(planDestino);
       onActualizarUsuario({ ...usuario, plan: usuarioActualizado.plan });
       setVista("datos");
     } catch (error) {
       console.error(error.response?.data ?? error);
-      setError("No se pudo cambiar el plan. Intentá de nuevo.");
+      dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
     } finally {
       setCargando(false);
     }
@@ -100,12 +102,6 @@ const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
             </div>
 
             <div className="modal-body">
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
-
               {/* Datos del usuario */}
               {vista === "datos" && (
                 <>
@@ -173,7 +169,7 @@ const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
                 <>
                   {cargando && <p>Cargando reservas...</p>}
 
-                  {!cargando && !error && reservas.length === 0 && (
+                  {!cargando && reservas.length === 0 && (
                     <p>Todavía no tenés reservas.</p>
                   )}
 

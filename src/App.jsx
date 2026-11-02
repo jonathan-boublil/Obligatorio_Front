@@ -3,6 +3,9 @@ import Header from './componentes/Header';
 import Hero from './componentes/Hero';
 import LoginModal from './componentes/LoginModal';
 import MisDatosModal from './componentes/MisDatosModal';
+import AgendaModal from './componentes/AgendaModal';
+import InformesModal from './componentes/InformesModal';
+import ErrorModal from './componentes/ErrorModal';
 import Professionals from './componentes/Professionals';
 import Services from './componentes/Services';
 import Contacto from './componentes/Contacto';
@@ -17,6 +20,8 @@ function App({ modalActivo }) {
   const [usuario, setUsuario] = useState(
     JSON.parse(window.localStorage.getItem("usuario"))
   )
+
+  const esAdmin = usuario?.role === "admin";
 
   const loginCorrecto = (usuarioLogueado) => {
     setEstaLogueado(true);
@@ -35,13 +40,16 @@ function App({ modalActivo }) {
 
   return (
     <>
-      <Header estaLogueado={estaLogueado} onLogout={logoutCorrecto} />
+      <Header estaLogueado={estaLogueado} esAdmin={esAdmin} onLogout={logoutCorrecto} />
       {/* LoginModal se agrega aca para que el modal aparezca en la pantalla principal */}
       {modalActivo === "login" && <LoginModal onLogin={loginCorrecto} />}
-      {modalActivo === "misDatos" && usuario && <MisDatosModal usuario={usuario} onActualizarUsuario={actualizarUsuario} />}
+      {modalActivo === "misDatos" && usuario && !esAdmin && <MisDatosModal usuario={usuario} onActualizarUsuario={actualizarUsuario} />}
+      {modalActivo === "agenda" && esAdmin && <AgendaModal />}
+      {modalActivo === "informes" && esAdmin && <InformesModal />}
+      <ErrorModal />
 
       <main>
-        <Hero />
+        <Hero estaLogueado={estaLogueado} />
         <Services />
         <Professionals />
         {estaLogueado && <Reserva usuario={usuario} />}

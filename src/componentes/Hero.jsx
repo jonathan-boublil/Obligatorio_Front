@@ -1,6 +1,18 @@
+import { useNavigate } from "react-router-dom";
 import principal from "../assets/principal.jpg";
 
-const Hero = () => {
+const Hero = ({ estaLogueado }) => {
+  const navigate = useNavigate();
+
+  //si está logueado baja a la sección de reservas, si no abre el login
+  const reservarHandler = () => {
+    if (estaLogueado) {
+      document.getElementById("reservas")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      navigate("/login");
+    }
+  };
+
   return (
     <section id="inicio" className="hero-section">
       <div className="container">
@@ -18,7 +30,7 @@ const Hero = () => {
                 dárselo.
               </p>
 
-              <button className="hero-button" type="button">
+              <button className="hero-button" type="button" onClick={reservarHandler}>
                 Reserva una cita
               </button>
             </div>

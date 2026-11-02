@@ -1,9 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { mostrarErrorSlice } from "../redux/features/errorSlice";
+import { obtenerMensajeError } from "../services/mensajeError";
 import { loginApi } from '../services/authServices';
 
 const LoginModal = ({onLogin}) => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [valores, setValores] = useState({
         identificador: "",
@@ -12,6 +16,20 @@ const LoginModal = ({onLogin}) => {
 
     const onSubmit = async (e) => {
         e.preventDefault();
+
+        //se valida antes de llamar al back (los intentos fallidos cuentan para el límite de login)
+        const errores = [];
+        if (valores.identificador.trim() === "") {
+            errores.push("- usuario no puede estar vacío");
+        }
+        if (valores.password === "") {
+            errores.push("- password no puede estar vacío");
+        }
+        if (errores.length > 0) {
+            dispatch(mostrarErrorSlice(`Datos inválidos\n${errores.join("\n")}`));
+            return;
+        }
+
         try {
             const resultado = await loginApi({
                 ...valores,
@@ -28,12 +46,14 @@ const LoginModal = ({onLogin}) => {
                 username: resultado.user.username,
                 email: resultado.user.email,
                 plan: resultado.user.plan,
+                role: resultado.user.role,
             };
             window.localStorage.setItem("usuario", JSON.stringify(usuario));
             onLogin(usuario);
             navigate("/#profesionales")
         } catch (error) {
             console.error(error.response?.data ?? error);
+            dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
         }
     };
 
