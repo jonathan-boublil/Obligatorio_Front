@@ -56,21 +56,7 @@ const services = [
     description:
       "Atendemos la salud de tus mascotas con consultas, controles, vacunación, desparasitación y urgencias. Nuestro equipo profesional asegura diagnóstico y cuidado confiable en cada visita.",
     icon: <HeartIcon />,
-  },
-  {
-    id: 2,
-    title: "Baño",
-    description:
-      "Ofrecemos servicios de higiene esencial para tu mascota incluido limpieza de oídos. Garantizamos comodidad y bienestar en cada sesión, con atención profesional y segura.",
-    icon: <ScissorsIcon />,
-  },
-  {
-    id: 3,
-    title: "Corte de pelo y estilismo",
-    description:
-      "Ofrecemos cortes de pelo y estilismo profesional para mascotas, adaptados a cada raza y necesidad. Garantizamos comodidad, higiene y una apariencia cuidada, siempre con atención especializada.",
-    icon: <DropIcon />,
-  },
+  }
 ];
 
 const Services = () => {
