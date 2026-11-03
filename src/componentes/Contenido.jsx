@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import Agregar from './Agregar'
-import Reservas from './Reservas';
+import Reservas from './Reserva';
 
 const reservasIniciales = [
     {

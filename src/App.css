@@ -623,6 +623,11 @@ img {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
+/* Agenda e Informes del admin: misma tarjeta que Reservas pero más ancha para las tablas */
+.admin-card {
+  max-width: 900px;
+}
+
 .booking-field {
   margin-bottom: 20px;
 }

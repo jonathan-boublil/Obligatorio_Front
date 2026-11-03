@@ -54,10 +54,17 @@ const Header = ({estaLogueado, esAdmin, onLogout}) => {
                 </a>
               </li>
 
-              {estaLogueado && (
+              {estaLogueado && !esAdmin && (
                 <li className="nav-item">
                   <a className="nav-link" href="#reservas">
                     Reservas
+                  </a>
+                </li>
+              )}
+              {estaLogueado && !esAdmin && (
+                <li className="nav-item">
+                  <a className="nav-link" href="#mis-reservas">
+                    Mis reservas
                   </a>
                 </li>
               )}
@@ -65,9 +72,9 @@ const Header = ({estaLogueado, esAdmin, onLogout}) => {
                 <li className="nav-item">
                   {/* el admin ve la agenda del día en lugar de sus datos */}
                   {esAdmin ? (
-                    <NavLink className="nav-link" to="/agenda">
+                    <a className="nav-link" href="#agenda">
                       Agenda
-                    </NavLink>
+                    </a>
                   ) : (
                     <NavLink className="nav-link" to="/mis-datos">
                       Mis datos
@@ -77,9 +84,23 @@ const Header = ({estaLogueado, esAdmin, onLogout}) => {
               )}
               {estaLogueado && esAdmin && (
                 <li className="nav-item">
-                  <NavLink className="nav-link" to="/informes">
+                  <a className="nav-link" href="#informes">
                     Informes
-                  </NavLink>
+                  </a>
+                </li>
+              )}
+              {estaLogueado && esAdmin && (
+                <li className="nav-item">
+                  <a className="nav-link" href="#clientes">
+                    Clientes
+                  </a>
+                </li>
+              )}
+              {estaLogueado && esAdmin && (
+                <li className="nav-item">
+                  <a className="nav-link" href="#categorias">
+                    Categorías
+                  </a>
                 </li>
               )}
               {!estaLogueado ? (

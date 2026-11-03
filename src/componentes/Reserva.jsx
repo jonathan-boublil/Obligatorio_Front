@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { obtenerMensajeError } from "../services/mensajeError";
+import { listarCategoriasApi, crearReservaApi } from "../services/reservaServices";
+import { horarios, fechaParaBack, obtenerFechasDisponibles, validarFecha } from "../services/fechasReserva";
 
 const ChevronLeftIcon = () => {
     return (
@@ -49,94 +52,55 @@ const CheckCircleIcon = () => {
     );
 };
 
-const services = [
-    "Veterinaria clínica",
-    "Baño",
-    "Corte de pelo y estilismo",
-];
-
-const schedules = [
-    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-    "17:00", "17:30",
-];
-
 const petTypes = ["Perro", "Gato", "Sapo", "Tortuga"];
 
 const totalPasos = 3;
 
+// mismos nombres de campos que espera el back en POST /reservas
 const reservaVacia = {
-    servicio: "",
+    categoriaId: "",
     fecha: "",
-    horario: "",
-    nombre: "",
+    hora: "",
+    nombreMascota: "",
     mascota: "",
-    tipoMascota: "",
-    telefono: "",
-    email: "",
+    edadMascota: "",
+    motivo: "",
 };
-
-// reserva vacía con el nombre y email del usuario logueado ya cargados
-const reservaInicial = (usuario) => ({
-    ...reservaVacia,
-    nombre: usuario?.name ?? "",
-    email: usuario?.email ?? "",
-});
 
 // campos que tienen que estar completos para pasar de cada paso
 const camposPorPaso = {
-    1: ["servicio"],
-    2: ["fecha", "horario"],
-    3: ["nombre", "mascota", "tipoMascota", "telefono", "email"],
+    1: ["categoriaId"],
+    2: ["fecha", "hora"],
+    3: ["nombreMascota", "mascota", "edadMascota", "motivo"],
 };
 
-// Fecha LOCAL YYYY-MM-DD (sin UTC)
-const formatearFecha = (fecha) => {
-    const anio = fecha.getFullYear();
-    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-    const dia = String(fecha.getDate()).padStart(2, "0");
-    return `${anio}-${mes}-${dia}`;
-};
-
-const esDomingo = (fechaTexto) => {
-    const fecha = new Date(`${fechaTexto}T00:00:00`);
-    return fecha.getDay() === 0;
-};
-
-// Próximos 15 días desde mañana, sin domingos
-const obtenerFechasDisponibles = () => {
-    const fechas = [];
-    const hoy = new Date();
-    let offset = 1;
-
-    while (fechas.length < 15 && offset < 90) {
-        const fecha = new Date(hoy);
-        fecha.setDate(fecha.getDate() + offset);
-        const fechaTexto = formatearFecha(fecha);
-        if (!esDomingo(fechaTexto)) fechas.push(fechaTexto);
-        offset++;
-    }
-    return fechas;
-};
-
-const Reserva = ({ usuario }) => {
+// se dibuja la reserva por primera vez
+const Reserva = ({ usuario, onReservaCreada }) => {
     const [pasoActual, setPasoActual] = useState(1);
-    const [valores, setValores] = useState(reservaInicial(usuario));
+    const [valores, setValores] = useState(reservaVacia);
+    const [categorias, setCategorias] = useState([]);
+    const [mensajeError, setMensajeError] = useState("");
     const [errorFecha, setErrorFecha] = useState("");
+    const [enviando, setEnviando] = useState(false);
     const [confirmada, setConfirmada] = useState(false);
 
     const fechasDisponibles = obtenerFechasDisponibles();
     const fechaMinima = fechasDisponibles[0];
     const fechaMaxima = fechasDisponibles[fechasDisponibles.length - 1];
 
-    //cuando el usuario inicia o cierra sesión se actualizan nombre y email
+    //se cargan los servicios desde el back al mostrar el formulario
     useEffect(() => {
-        setValores((valoresActuales) => ({
-            ...valoresActuales,
-            nombre: usuario?.name ?? "",
-            email: usuario?.email ?? "",
-        }));
-    }, [usuario]);
+        const cargarCategorias = async () => {
+            try {
+                const resultado = await listarCategoriasApi();
+                setCategorias(resultado);
+            } catch (error) {
+                console.error(error);
+                setMensajeError(obtenerMensajeError(error, "No se pudieron cargar los servicios."));
+            }
+        };
+        cargarCategorias();
+    }, []);
 
     //a los 3 segundos de confirmar vuelve al paso 1 con el formulario vacío
     useEffect(() => {
@@ -144,14 +108,14 @@ const Reserva = ({ usuario }) => {
 
         const timer = setTimeout(() => {
             setConfirmada(false);
-            setValores(reservaInicial(usuario));
+            setValores(reservaVacia);
             setPasoActual(1);
         }, 3000);
 
         return () => {
             clearTimeout(timer);
         };
-    }, [confirmada, usuario]);
+    }, [confirmada]);
 
     const cambiarValor = (name, value) => {
         const auxValores = { ...valores };
@@ -165,19 +129,10 @@ const Reserva = ({ usuario }) => {
 
     const fechaHandler = (e) => {
         const fecha = e.target.value;
+        const error = validarFecha(fecha, fechaMinima, fechaMaxima);
 
-        if (fecha && esDomingo(fecha)) {
-            setErrorFecha("Los domingos está cerrado. Elija otro día.");
-            cambiarValor("fecha", "");
-            return;
-        }
-        if (fecha && (fecha < fechaMinima || fecha > fechaMaxima)) {
-            setErrorFecha("La fecha está fuera del rango permitido.");
-            cambiarValor("fecha", "");
-            return;
-        }
-        setErrorFecha("");
-        cambiarValor("fecha", fecha);
+        setErrorFecha(error);
+        cambiarValor("fecha", error ? "" : fecha);
     };
 
     //hasta que no estén completos los campos del paso no se puede avanzar
@@ -193,15 +148,34 @@ const Reserva = ({ usuario }) => {
         setPasoActual(pasoActual + 1);
     };
 
-    const confirmarHandler = () => {
-        const reserva = { ...valores };
+    const confirmarHandler = async () => {
+        const reserva = {
+            ...valores,
+            fecha: fechaParaBack(valores.fecha),
+            nombreMascota: valores.nombreMascota.trim(),
+            edadMascota: Number(valores.edadMascota),
+            motivo: valores.motivo.trim(),
+        };
 
-        //cuando esté el back acá se llama a la api con el token del usuario logueado
-        //const reservaCreada = await crearReservaApi(reserva);
-        console.log("Reserva a enviar:", reserva);
-
-        setConfirmada(true);
+        setMensajeError("");
+        setEnviando(true);
+        try {
+            //el token del usuario logueado lo agrega el interceptor de axios
+            await crearReservaApi(reserva);
+            setConfirmada(true);
+            //avisa para que "Mis reservas" vuelva a cargar la lista
+            onReservaCreada?.();
+        } catch (error) {
+            console.error(error);
+            setMensajeError(obtenerMensajeError(error, "No se pudo crear la reserva."));
+        } finally {
+            setEnviando(false);
+        }
     };
+
+    const categoriaElegida = categorias.find(
+        (categoria) => categoria.id === valores.categoriaId
+    );
 
     return (
         <section id="reservas" className="booking-section">
@@ -219,32 +193,44 @@ const Reserva = ({ usuario }) => {
                         <CheckCircleIcon />
                         <h3>¡Reserva confirmada!</h3>
                         <p>
-                            ¡Gracias, {valores.nombre}! Tu cita para {valores.mascota} ha sido
+                            ¡Gracias, {usuario?.name}! Tu cita para {valores.nombreMascota} ha sido
                             confirmada.
                         </p>
                         <p className="booking-success-sub">
-                            Enviaremos un correo electrónico de confirmación a {valores.email}
+                            Enviaremos un correo electrónico de confirmación a {usuario?.email}
                         </p>
                     </div>
                 ) : (
                     <form className="booking-card" onSubmit={(e) => e.preventDefault()}>
+                        {mensajeError && (
+                            <div className="alert alert-danger" role="alert">
+                                {mensajeError}
+                            </div>
+                        )}
+
                         {/* Paso 1: servicio */}
                         {pasoActual === 1 && (
                             <div className="booking-field">
-                                <p className="booking-step-title">Seleccione un servicio</p>
+                                <p className="booking-step-title">Seleccione la categoria</p>
 
-                                <div className="booking-options">
-                                    {services.map((service) => (
-                                        <button
-                                            className={`booking-option ${valores.servicio === service ? "selected" : ""}`}
-                                            type="button"
-                                            key={service}
-                                            onClick={() => cambiarValor("servicio", service)}
-                                        >
-                                            {service}
-                                        </button>
-                                    ))}
-                                </div>
+                                {/* los servicios son las categorías que creó el admin en el back */}
+                                {categorias.length === 0 ? (
+                                    <p>No hay servicios disponibles por el momento.</p>
+                                ) : (
+                                    <div className="booking-options">
+                                        {categorias.map((categoria) => (
+                                            <button
+                                                className={`booking-option text-capitalize ${valores.categoriaId === categoria.id ? "selected" : ""}`}
+                                                type="button"
+                                                key={categoria.id}
+                                                title={categoria.descripcion}
+                                                onClick={() => cambiarValor("categoriaId", categoria.id)}
+                                            >
+                                                {categoria.nombre}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -271,14 +257,14 @@ const Reserva = ({ usuario }) => {
                                     <p className="booking-step-title">Seleccione un horario</p>
 
                                     <div className="booking-times">
-                                        {schedules.map((schedule) => (
+                                        {horarios.map((horario) => (
                                             <button
-                                                className={`booking-time ${valores.horario === schedule ? "selected" : ""}`}
+                                                className={`booking-time ${valores.hora === horario ? "selected" : ""}`}
                                                 type="button"
-                                                key={schedule}
-                                                onClick={() => cambiarValor("horario", schedule)}
+                                                key={horario}
+                                                onClick={() => cambiarValor("hora", horario)}
                                             >
-                                                {schedule}
+                                                {horario}
                                             </button>
                                         ))}
                                     </div>
@@ -289,18 +275,18 @@ const Reserva = ({ usuario }) => {
                         {/* Paso 3: datos */}
                         {pasoActual === 3 && (
                             <>
+                                {/* el back toma el cliente del token, se muestra solo para que sepa con qué cuenta reserva */}
                                 <div className="booking-field">
-                                    <label className="booking-label" htmlFor="bookingOwner">
-                                        Nombre
+                                    <label className="booking-label" htmlFor="bookingUser">
+                                        Usuario
                                     </label>
                                     <input
-                                        id="bookingOwner"
+                                        id="bookingUser"
                                         className="form-control booking-input"
                                         type="text"
-                                        name="nombre"
-                                        placeholder="Su nombre completo"
-                                        value={valores.nombre}
-                                        onChange={handleChange}
+                                        value={usuario?.username ?? ""}
+                                        readOnly
+                                        disabled
                                     />
                                 </div>
 
@@ -312,9 +298,10 @@ const Reserva = ({ usuario }) => {
                                         id="bookingPet"
                                         className="form-control booking-input"
                                         type="text"
-                                        name="mascota"
+                                        name="nombreMascota"
                                         placeholder="El nombre de su mascota"
-                                        value={valores.mascota}
+                                        maxLength="50"
+                                        value={valores.nombreMascota}
                                         onChange={handleChange}
                                     />
                                 </div>
@@ -326,8 +313,8 @@ const Reserva = ({ usuario }) => {
                                     <select
                                         id="bookingPetType"
                                         className="form-select booking-input"
-                                        name="tipoMascota"
-                                        value={valores.tipoMascota}
+                                        name="mascota"
+                                        value={valores.mascota}
                                         onChange={handleChange}
                                     >
                                         <option value="">Seleccione tipo</option>
@@ -338,31 +325,35 @@ const Reserva = ({ usuario }) => {
                                 </div>
 
                                 <div className="booking-field">
-                                    <label className="booking-label" htmlFor="bookingPhone">
-                                        Teléfono
+                                    <label className="booking-label" htmlFor="bookingPetAge">
+                                        Edad de la mascota (años)
                                     </label>
                                     <input
-                                        id="bookingPhone"
+                                        id="bookingPetAge"
                                         className="form-control booking-input"
-                                        type="tel"
-                                        name="telefono"
-                                        placeholder="093111222"
-                                        value={valores.telefono}
+                                        type="number"
+                                        name="edadMascota"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        placeholder="3"
+                                        value={valores.edadMascota}
                                         onChange={handleChange}
                                     />
                                 </div>
 
                                 <div className="booking-field">
-                                    <label className="booking-label" htmlFor="bookingEmail">
-                                        Email
+                                    <label className="booking-label" htmlFor="bookingReason">
+                                        Motivo de la consulta
                                     </label>
-                                    <input
-                                        id="bookingEmail"
+                                    <textarea
+                                        id="bookingReason"
                                         className="form-control booking-input"
-                                        type="email"
-                                        name="email"
-                                        placeholder="tu@email.com"
-                                        value={valores.email}
+                                        name="motivo"
+                                        rows="3"
+                                        maxLength="200"
+                                        placeholder="Contanos brevemente el motivo"
+                                        value={valores.motivo}
                                         onChange={handleChange}
                                     />
                                 </div>
@@ -394,20 +385,20 @@ const Reserva = ({ usuario }) => {
                                 <button
                                     className="booking-button booking-button-primary"
                                     type="button"
-                                    disabled={!pasoCompleto}
+                                    disabled={!pasoCompleto || enviando}
                                     onClick={confirmarHandler}
                                 >
-                                    Confirmar reserva
+                                    {enviando ? "Enviando..." : "Confirmar reserva"}
                                 </button>
                             )}
                         </div>
 
                         {/* Resumen de lo elegido */}
-                        {valores.servicio && (
+                        {categoriaElegida && (
                             <div className="booking-summary">
-                                <p><strong>Servicio:</strong> {valores.servicio}</p>
-                                {valores.fecha && <p><strong>Fecha:</strong> {valores.fecha}</p>}
-                                {valores.horario && <p><strong>Horario:</strong> {valores.horario}</p>}
+                                <p><strong>Servicio:</strong> <span className="text-capitalize">{categoriaElegida.nombre}</span></p>
+                                {valores.fecha && <p><strong>Fecha:</strong> {fechaParaBack(valores.fecha)}</p>}
+                                {valores.hora && <p><strong>Horario:</strong> {valores.hora}</p>}
                             </div>
                         )}
                     </form>

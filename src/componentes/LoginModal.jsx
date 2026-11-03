@@ -1,18 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { mostrarErrorSlice } from "../redux/features/errorSlice";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { loginApi } from '../services/authServices';
 
 const LoginModal = ({onLogin}) => {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
 
     const [valores, setValores] = useState({
         identificador: "",
         password: "",
     });
+
+    const [mensajeError, setMensajeError] = useState("");
 
     const formularioCompleto = 
       valores.identificador !=="" &&
@@ -21,17 +20,18 @@ const LoginModal = ({onLogin}) => {
 
     const onSubmit = async (e) => {
         e.preventDefault();
+        setMensajeError("");
 
         //se valida antes de llamar al back (los intentos fallidos cuentan para el límite de login)
         const errores = [];
         if (valores.identificador.trim() === "") {
-            errores.push("- usuario no puede estar vacío");
+            errores.push("El usuario no puede estar vacío");
         }
         if (valores.password === "") {
-            errores.push("- password no puede estar vacío");
+            errores.push("La contraseña no puede estar vacía");
         }
         if (errores.length > 0) {
-            dispatch(mostrarErrorSlice(`Datos inválidos\n${errores.join("\n")}`));
+            setMensajeError(errores.join(". "));
             return;
         }
 
@@ -57,8 +57,8 @@ const LoginModal = ({onLogin}) => {
             onLogin(usuario);
             navigate("/#profesionales")
         } catch (error) {
-            console.error(error.response?.data ?? error);
-            dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
+            console.error(error);
+            setMensajeError(obtenerMensajeError(error, "No se pudo iniciar sesión."));
         }
     };
 
@@ -103,6 +103,12 @@ const LoginModal = ({onLogin}) => {
             </div>
 
             <div className="modal-body">
+              {mensajeError && (
+                <div className="alert alert-danger" role="alert">
+                  {mensajeError}
+                </div>
+              )}
+
               <form onSubmit={onSubmit}>
                 <div className="mb-3">
                   <label

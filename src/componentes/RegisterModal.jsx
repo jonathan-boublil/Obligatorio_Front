@@ -1,13 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useDispatch } from 'react-redux';
-import { mostrarErrorSlice } from '../redux/features/errorSlice';
 import { obtenerMensajeError } from '../services/mensajeError';
 import { registerApi } from '../services/authServices';
 
 export const RegisterModal = ({onLogin}) => {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
 
     const [valores, setValores] = useState({
         name: "",
@@ -16,6 +13,8 @@ export const RegisterModal = ({onLogin}) => {
         password: "",
         confirmPassword: "",
     });
+
+   const [mensajeError, setMensajeError] = useState("");
 
   const formularioCompleto = 
       valores.name !=="" &&
@@ -30,6 +29,8 @@ export const RegisterModal = ({onLogin}) => {
 
    const onSubmit = async (event) => {
         event.preventDefault();
+
+        setMensajeError("");
 
         try {
             const resultado = await registerApi(valores);
@@ -50,8 +51,8 @@ export const RegisterModal = ({onLogin}) => {
 
             navigate("/#profesionales");
         } catch (error) {
-            console.error(error.response?.data ?? error);
-            dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
+            console.error(error);
+            setMensajeError(obtenerMensajeError(error, "No se pudo completar el registro."));
         };
     };
 
@@ -96,6 +97,13 @@ export const RegisterModal = ({onLogin}) => {
             </div>
 
             <div className="modal-body">
+
+                {mensajeError && (
+                    <div className="alert alert-danger" role="alert">
+                        {mensajeError}
+                    </div>
+                )}
+
               <form onSubmit={onSubmit}>
                 <div className="mb-3">
                   <label

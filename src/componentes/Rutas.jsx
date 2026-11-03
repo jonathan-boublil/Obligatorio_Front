@@ -9,8 +9,6 @@ const Rutas = () => {
             <Route path="/" element={<App />}> </Route>
             <Route path="/login" element={<App modalActivo="login" />}></Route>
             <Route path="/mis-datos" element={<App modalActivo="misDatos" />}></Route>
-            <Route path="/agenda" element={<App modalActivo="agenda" />}></Route>
-            <Route path="/informes" element={<App modalActivo="informes" />}></Route>
             <Route path="/register" element={<App modalActivo="registro" />}></Route>
             <Route
                 path="*"

@@ -3,16 +3,17 @@ import Header from './componentes/Header';
 import Hero from './componentes/Hero';
 import LoginModal from './componentes/LoginModal';
 import MisDatosModal from './componentes/MisDatosModal';
-import AgendaModal from './componentes/AgendaModal';
-import InformesModal from './componentes/InformesModal';
-import ErrorModal from './componentes/ErrorModal';
+import Categorias from './componentes/Categorias';
+import Agenda from './componentes/Agenda';
+import Informes from './componentes/Informes';
+import Clientes from './componentes/Clientes';
+import MisReservas from './componentes/MisReservas';
 import Professionals from './componentes/Professionals';
 import Services from './componentes/Services';
 import Contacto from './componentes/Contacto';
 import Reserva from './componentes/Reserva';
-import { RegisterModal } from './componentes/RegisterModal';
 
-
+// si hay token es true
 function App({ modalActivo }) {
   const [estaLogueado, setEstaLogueado] = useState(
     window.localStorage.getItem("token") ? true : false
@@ -23,6 +24,9 @@ function App({ modalActivo }) {
   )
 
   const esAdmin = usuario?.role === "admin";
+
+  const [contadorReservas, setContadorReservas] = useState(0);
+  const reservaCreada = () => setContadorReservas((c) => c + 1);
 
   const loginCorrecto = (usuarioLogueado) => {
     setEstaLogueado(true);
@@ -44,17 +48,18 @@ function App({ modalActivo }) {
       <Header estaLogueado={estaLogueado} esAdmin={esAdmin} onLogout={logoutCorrecto} />
       {/* LoginModal se agrega aca para que el modal aparezca en la pantalla principal */}
       {modalActivo === "login" && <LoginModal onLogin={loginCorrecto} />}
-      {modalActivo === "registro" && <RegisterModal onLogin={loginCorrecto} />}
       {modalActivo === "misDatos" && usuario && !esAdmin && <MisDatosModal usuario={usuario} onActualizarUsuario={actualizarUsuario} />}
-      {modalActivo === "agenda" && esAdmin && <AgendaModal />}
-      {modalActivo === "informes" && esAdmin && <InformesModal />}
-      <ErrorModal />
 
       <main>
         <Hero estaLogueado={estaLogueado} />
         <Services />
         <Professionals />
-        {estaLogueado && <Reserva usuario={usuario} />}
+        {estaLogueado && !esAdmin && <Reserva usuario={usuario} onReservaCreada={reservaCreada} />}
+        {estaLogueado && !esAdmin && <MisReservas actualizar={contadorReservas} />}
+        {esAdmin && <Clientes />}
+        {esAdmin && <Categorias />}
+        {esAdmin && <Agenda />}
+        {esAdmin && <Informes />}
         <Contacto />
       </main>
     </>

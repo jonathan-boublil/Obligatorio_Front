@@ -1,67 +1,45 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { mostrarErrorSlice } from "../redux/features/errorSlice";
 import { obtenerMensajeError } from "../services/mensajeError";
-import { cambiarPlanApi, listarReservasApi } from "../services/userServices";
+import { cambiarPlanApi } from "../services/userServices";
 
-// la fecha viene en UTC desde el back, se muestra tal cual sin correrla por la zona horaria
-const formatearFecha = (fecha) => {
-  return new Date(fecha).toLocaleDateString("es-UY", { timeZone: "UTC" });
-};
-
+// las reservas del usuario se muestran en la sección MisReservas, acá quedan los datos y el plan
 const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
-  // "datos" | "confirmarPlan" | "reservas"
+  // "datos" | "confirmarPlan"
   const [vista, setVista] = useState("datos");
   const [cargando, setCargando] = useState(false);
-  const [reservas, setReservas] = useState([]);
+  const [mensajeError, setMensajeError] = useState("");
 
   const esPremium = usuario.plan?.toLowerCase() === "premium";
   // el botón siempre ofrece pasarse al otro plan
   const planDestino = esPremium ? "plus" : "premium";
 
-  //cuando se entra a la vista de reservas se piden al back
-  useEffect(() => {
-    if (vista !== "reservas") return;
-
-    const cargarReservas = async () => {
-      setCargando(true);
-      try {
-        const lista = await listarReservasApi();
-        setReservas(lista);
-      } catch (error) {
-        console.error(error.response?.data ?? error);
-        dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
-        //si no se pudieron cargar se vuelve a los datos
-        setVista("datos");
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    cargarReservas();
-  }, [vista, dispatch]);
-
   const cerrarModal = () => {
     navigate("/");
   };
 
+  //al cambiar de vista se limpia el error de la vista anterior
+  const irAVista = (nuevaVista) => {
+    setMensajeError("");
+    setVista(nuevaVista);
+  };
+
   const volverADatos = () => {
-    setVista("datos");
+    irAVista("datos");
   };
 
   const aceptarCambioPlan = async () => {
+    setMensajeError("");
     setCargando(true);
     try {
       const usuarioActualizado = await cambiarPlanApi(planDestino);
       onActualizarUsuario({ ...usuario, plan: usuarioActualizado.plan });
       setVista("datos");
     } catch (error) {
-      console.error(error.response?.data ?? error);
-      dispatch(mostrarErrorSlice(obtenerMensajeError(error)));
+      console.error(error);
+      setMensajeError(obtenerMensajeError(error, "No se pudo cambiar el plan."));
     } finally {
       setCargando(false);
     }
@@ -70,7 +48,6 @@ const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
   const titulos = {
     datos: "Mis datos",
     confirmarPlan: "Cambiar plan",
-    reservas: "Mis reservas",
   };
 
   return (
@@ -102,40 +79,36 @@ const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
             </div>
 
             <div className="modal-body">
+              {mensajeError && (
+                <div className="alert alert-danger" role="alert">
+                  {mensajeError}
+                </div>
+              )}
+
               {/* Datos del usuario */}
               {vista === "datos" && (
-                <>
-                  <dl className="row mb-0">
-                    <dt className="col-sm-4">Nombre</dt>
-                    <dd className="col-sm-8">{usuario.name}</dd>
+                <dl className="row mb-0">
+                  <dt className="col-sm-4">Nombre</dt>
+                  <dd className="col-sm-8">{usuario.name}</dd>
 
-                    <dt className="col-sm-4">Usuario</dt>
-                    <dd className="col-sm-8">{usuario.username}</dd>
+                  <dt className="col-sm-4">Usuario</dt>
+                  <dd className="col-sm-8">{usuario.username}</dd>
 
-                    <dt className="col-sm-4">Email</dt>
-                    <dd className="col-sm-8">{usuario.email}</dd>
+                  <dt className="col-sm-4">Email</dt>
+                  <dd className="col-sm-8">{usuario.email}</dd>
 
-                    <dt className="col-sm-4">Plan</dt>
-                    <dd className="col-sm-8 d-flex align-items-center gap-2">
-                      <span className="text-capitalize">{usuario.plan}</span>
-                      <button
-                        className="btn btn-outline-success btn-sm"
-                        type="button"
-                        onClick={() => setVista("confirmarPlan")}
-                      >
-                        Pasar a {planDestino}
-                      </button>
-                    </dd>
-                  </dl>
-
-                  <button
-                    className="btn btn-success mt-3"
-                    type="button"
-                    onClick={() => setVista("reservas")}
-                  >
-                    Ver reservas
-                  </button>
-                </>
+                  <dt className="col-sm-4">Plan</dt>
+                  <dd className="col-sm-8 d-flex align-items-center gap-2">
+                    <span className="text-capitalize">{usuario.plan}</span>
+                    <button
+                      className="btn btn-outline-success btn-sm"
+                      type="button"
+                      onClick={() => irAVista("confirmarPlan")}
+                    >
+                      Pasar a {planDestino}
+                    </button>
+                  </dd>
+                </dl>
               )}
 
               {/* Confirmación de cambio de plan */}
@@ -161,52 +134,6 @@ const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
                       {cargando ? "Cambiando..." : "Aceptar"}
                     </button>
                   </div>
-                </>
-              )}
-
-              {/* Historial de reservas */}
-              {vista === "reservas" && (
-                <>
-                  {cargando && <p>Cargando reservas...</p>}
-
-                  {!cargando && reservas.length === 0 && (
-                    <p>Todavía no tenés reservas.</p>
-                  )}
-
-                  {!cargando && reservas.length > 0 && (
-                    <div className="table-responsive">
-                      <table className="table table-sm align-middle">
-                        <thead>
-                          <tr>
-                            <th>Fecha</th>
-                            <th>Hora</th>
-                            <th>Servicio</th>
-                            <th>Mascota</th>
-                            <th>Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reservas.map((reserva) => (
-                            <tr key={reserva.id}>
-                              <td>{formatearFecha(reserva.fecha)}</td>
-                              <td>{reserva.hora}</td>
-                              <td>{reserva.categoriaId?.nombre}</td>
-                              <td>{reserva.nombreMascota}</td>
-                              <td className="text-capitalize">{reserva.estado}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  <button
-                    className="btn btn-outline-secondary mt-2"
-                    type="button"
-                    onClick={volverADatos}
-                  >
-                    Volver
-                  </button>
                 </>
               )}
             </div>
