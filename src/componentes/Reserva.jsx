@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { listarCategoriasApi, crearReservaApi } from "../services/reservaServices";
 import { horarios, fechaParaBack, obtenerFechasDisponibles, validarFecha } from "../services/fechasReserva";
+import SubirImagen from "./SubirImagen";
 
 const ChevronLeftIcon = () => {
     return (
@@ -65,6 +66,8 @@ const reservaVacia = {
     mascota: "",
     edadMascota: "",
     motivo: "",
+    imageUrl: "",
+    imagePublicId: "",
 };
 
 // campos que tienen que estar completos para pasar de cada paso
@@ -83,6 +86,7 @@ const Reserva = ({ usuario, onReservaCreada }) => {
     const [errorFecha, setErrorFecha] = useState("");
     const [enviando, setEnviando] = useState(false);
     const [confirmada, setConfirmada] = useState(false);
+    const [resetImagen, setResetImagen] = useState(0);
 
     const fechasDisponibles = obtenerFechasDisponibles();
     const fechaMinima = fechasDisponibles[0];
@@ -102,15 +106,20 @@ const Reserva = ({ usuario, onReservaCreada }) => {
         cargarCategorias();
     }, []);
 
-    //a los 3 segundos de confirmar vuelve al paso 1 con el formulario vacío
+    //a los 5 segundos de confirmar vuelve al paso 1 con el formulario vacío
     useEffect(() => {
         if (!confirmada) return;
 
-        const timer = setTimeout(() => {
+        const limpiarFormulario = () => {
             setConfirmada(false);
-            setValores(reservaVacia);
+            setValores({ ...reservaVacia });
             setPasoActual(1);
-        }, 3000);
+            setMensajeError("");
+            setErrorFecha("");
+            setResetImagen((valorActual) => valorActual + 1);
+        };
+
+        const timer = setTimeout(limpiarFormulario, 5000);
 
         return () => {
             clearTimeout(timer);
@@ -118,9 +127,18 @@ const Reserva = ({ usuario, onReservaCreada }) => {
     }, [confirmada]);
 
     const cambiarValor = (name, value) => {
-        const auxValores = { ...valores };
-        auxValores[name] = value;
-        setValores(auxValores);
+        setValores((valoresActuales) => ({
+                ...valoresActuales,
+                [name]: value,
+        }));
+    };
+
+    const handleImageUrl = (imageUrl) => {
+        cambiarValor("imageUrl", imageUrl);
+    };
+
+    const handleImagePublicId = (imagePublicId) => {
+        cambiarValor("imagePublicId", imagePublicId);
     };
 
     const handleChange = (e) => {
@@ -359,6 +377,14 @@ const Reserva = ({ usuario, onReservaCreada }) => {
                                 </div>
                             </>
                         )}
+
+                        <div className={pasoActual === 3 ? "" : "d-none"}>
+                            <SubirImagen
+                                key={resetImagen}
+                                handleImgURL={handleImageUrl}
+                                handleImgPublicId={handleImagePublicId}
+                            />
+                        </div>
 
                         <div className="booking-actions">
                             <button
