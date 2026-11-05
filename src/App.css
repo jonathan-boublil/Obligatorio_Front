@@ -1017,3 +1017,48 @@ img {
     font-size: 24px;
   }
 }
+
+/* Imagen de la mascota */
+
+.booking-image-upload {
+  margin-top: 8px;
+  padding: 16px;
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-primary-soft);
+}
+
+.booking-image-preview {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  margin-top: 16px;
+  border-radius: 8px;
+  object-fit: contain;
+  background-color: var(--color-white);
+}
+
+.booking-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.booking-image-status {
+  color: var(--color-primary-dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 575.98px) {
+  .booking-image-actions .btn {
+    width: 100%;
+  }
+
+  .booking-image-status {
+    width: 100%;
+    text-align: center;
+  }
+}
