@@ -15,6 +15,7 @@ export const RegisterModal = ({onLogin}) => {
     });
 
    const [mensajeError, setMensajeError] = useState("");
+   const [mensajeExito, setMensajeExito] = useState("");
 
   const formularioCompleto = 
       valores.name !=="" &&
@@ -31,6 +32,7 @@ export const RegisterModal = ({onLogin}) => {
         event.preventDefault();
 
         setMensajeError("");
+        setMensajeExito("");
 
         try {
             const resultado = await registerApi(valores);
@@ -49,7 +51,12 @@ export const RegisterModal = ({onLogin}) => {
             window.localStorage.setItem("usuario", JSON.stringify(usuario));
             onLogin(usuario);
 
-            navigate("/#profesionales");
+            setMensajeExito(
+              "Inicio de sesión correcto. Redirigiendo...",
+            );
+            setTimeout(() => {
+              navigate("/");
+            }, 1500);
         } catch (error) {
             console.error(error);
             setMensajeError(obtenerMensajeError(error, "No se pudo completar el registro."));
@@ -220,6 +227,16 @@ export const RegisterModal = ({onLogin}) => {
                   Registrarme
                 </button>
               </form>
+
+              {mensajeExito && (
+                <>
+                  <br />
+                  <div className="alert alert-success" role="alert">
+                    {mensajeExito}
+                  </div>
+                </>
+              )}
+
             </div>
           </div>
         </div>

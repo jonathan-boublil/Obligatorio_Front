@@ -20,6 +20,14 @@
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
+   /* Colores del gráfico */
+
+  --chart-color-1: rgba(47, 155, 120, 0.8);
+  --chart-color-2: rgba(74, 144, 226, 0.8);
+  --chart-color-3: rgba(245, 166, 35, 0.8);
+  --chart-color-4: rgba(126, 87, 194, 0.8);
+  --chart-color-5: rgba(229, 72, 77, 0.8);
 }
 
 * {
@@ -1060,5 +1068,17 @@ img {
   .booking-image-status {
     width: 100%;
     text-align: center;
+  }
+}
+
+.report-chart {
+  position: relative;
+  width: 100%;
+  height: 380px;
+}
+
+@media (max-width: 767.98px) {
+  .report-chart {
+    height: 320px;
   }
 }

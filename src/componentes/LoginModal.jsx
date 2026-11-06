@@ -12,6 +12,7 @@ const LoginModal = ({onLogin}) => {
     });
 
     const [mensajeError, setMensajeError] = useState("");
+    const [mensajeExito, setMensajeExito] = useState("");
 
     const formularioCompleto = 
       valores.identificador !=="" &&
@@ -21,6 +22,7 @@ const LoginModal = ({onLogin}) => {
     const onSubmit = async (e) => {
         e.preventDefault();
         setMensajeError("");
+        setMensajeExito("");
 
         //se valida antes de llamar al back (los intentos fallidos cuentan para el límite de login)
         const errores = [];
@@ -55,7 +57,12 @@ const LoginModal = ({onLogin}) => {
             };
             window.localStorage.setItem("usuario", JSON.stringify(usuario));
             onLogin(usuario);
-            navigate("/#profesionales")
+            setMensajeExito(
+              "Inicio de sesión correcto. Redirigiendo...",
+            );
+            setTimeout(() => {
+              navigate("/");
+            }, 1500);
         } catch (error) {
             console.error(error);
             setMensajeError(obtenerMensajeError(error, "No se pudo iniciar sesión."));
@@ -156,6 +163,16 @@ const LoginModal = ({onLogin}) => {
                   Ingresar
                 </button>
               </form>
+              
+              {mensajeExito && (
+                <>
+                  <br />
+                  <div className="alert alert-success" role="alert">
+                    {mensajeExito}
+                  </div>
+                </>
+            )}
+
             </div>
           </div>
         </div>
