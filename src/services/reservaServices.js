@@ -33,3 +33,12 @@ export const agendaDelDiaApi = async (fecha) => {
     const resultado = await api.get("/reservas/agenda", { params: { fecha } });
     return resultado.data;
 }
+
+// Datos para el informe de reservas por categoría de admin
+export const informeReservasPorCategoriaApi = async () => {
+  const resultado = await api.get(
+    "/reservas/informes/categorias",
+  );
+
+  return resultado.data;
+};

@@ -15,6 +15,8 @@ const MisReservas = ({ actualizar }) => {
     // "lista" | "eliminar"
     const [vista, setVista] = useState("lista");
     const [reservas, setReservas] = useState([]);
+    const [filtroMascota, setFiltroMascota] = useState("");
+
     const [cargando, setCargando] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [mensajeError, setMensajeError] = useState("");
@@ -145,6 +147,16 @@ const MisReservas = ({ actualizar }) => {
         eliminar: "Eliminar reserva",
     };
 
+    //Logica de filtro de mascota
+    const handlerFilter = (e) => {
+        setFiltroMascota(e.target.value);
+    };
+    const reservasFiltradas = reservas.filter((reserva) =>
+        reserva.nombreMascota
+            .toLowerCase()
+            .includes(filtroMascota.toLowerCase()),
+    );
+
     return (
         <section id="mis-reservas" className="booking-section">
             <div className="container">
@@ -153,6 +165,26 @@ const MisReservas = ({ actualizar }) => {
 
                     <p>{subtitulos[vista]}</p>
                 </div>
+
+                {vista === "lista" && (
+                    <div className="admin-card mx-auto mb-4">
+                        <label
+                            className="booking-label"
+                            htmlFor="filtroMascota"
+                        >
+                            Filtrar por mascota
+                        </label>
+
+                        <input
+                            id="filtroMascota"
+                            className="form-control booking-input"
+                            type="text"
+                            placeholder="Nombre de la mascota"
+                            value={filtroMascota}
+                            onChange={handlerFilter}
+                        />
+                    </div>
+                )}
 
                 <div className="booking-card admin-card">
                     {mensajeError && (
@@ -166,9 +198,15 @@ const MisReservas = ({ actualizar }) => {
                         <>
                             {cargando ? (
                                 <p className="mb-0">Cargando reservas...</p>
-                            ) : reservas.length === 0 ? (
-                                <p className="mb-0">Todavía no tenés reservas.</p>
-                            ) : (
+                                ) : reservas.length === 0 ? (
+                                <p className="mb-0">
+                                    Todavía no tenés reservas.
+                                </p>
+                                ) : reservasFiltradas.length === 0 ? (
+                                <p className="mb-0">
+                                    No se encontraron reservas para esa mascota.
+                                </p>
+                                ) : (
                                 <div className="table-responsive">
                                     <table className="table table-sm align-middle mb-0">
                                         <thead>
@@ -182,7 +220,7 @@ const MisReservas = ({ actualizar }) => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {reservas.map((reserva) => {
+                                            {reservasFiltradas.map((reserva) => {
                                                 const enEdicion = reserva.id === editandoId;
 
                                                 return (
