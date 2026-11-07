@@ -1,33 +1,40 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = []
+const initialState = {
+    lista: [],
+};
 
 const reservaSlice = createSlice({
     name: "reservaSlice",
     initialState,
     reducers: {
-        // cargarReservasInicialesSlice: (state, action) => {
-        //     const listaReservas = action.payload;
-        //     return listaReservas;
-        // },
-        // changeCheckedSlice: (state, action) => {
-        //     const { id, checked } = action.payload;
-        //     console.log(`Reserva ${id} - ${checked}`);
-        //     state.find((reserva) => reserva.id === id).completed = checked; //validar que encontro la reserva
-        // },
-        // agregarReservaSlice: (state, action) => {
-        //     const reserva = action.payload;
-        //     state.push(reserva)
-        // },
-        // borrarReservaSlice: (state, action) => {
-        //     const id = action.payload;
-        //     const stateAux = state.filter((reserva) => reserva.id !== id);
-        //     return stateAux;
-        // },
+        cargarReservasInicialesSlice: (state, action) => {
+            const listaReservas = action.payload;
+            state.lista = listaReservas;
+        },
+        actualizarReservaSlice: (state, action) => {
+            const reservaActualizada = action.payload;
+
+            const reserva = state.lista.find(
+                (item) => item.id === reservaActualizada.id,
+            );
+
+            if (reserva) {
+                Object.assign(reserva, reservaActualizada);
+            }
+        },
+        eliminarReservaSlice: (state, action) => {
+            const idReserva = action.payload;
+
+            state.lista = state.lista.filter((reserva) => reserva.id !== idReserva);
+        },
+        limpiarReservasSlice: () => {
+            return initialState;
+        },
     },
 });
 
 
-export const { cargarReservasInicialesSlice, changeCheckedSlice, agregarReservaSlice, borrarReservaSlice } =
+export const { cargarReservasInicialesSlice, actualizarReservaSlice, eliminarReservaSlice, limpiarReservasSlice } =
     reservaSlice.actions;
 export default reservaSlice.reducer;

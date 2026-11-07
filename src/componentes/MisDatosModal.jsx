@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { cambiarPlanApi } from "../services/userServices";
+import InformeUsoPlan from "./InformeUsoPlan";
 
 // las reservas del usuario se muestran en la sección MisReservas, acá quedan los datos y el plan
 const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
@@ -87,28 +88,32 @@ const MisDatosModal = ({ usuario, onActualizarUsuario }) => {
 
               {/* Datos del usuario */}
               {vista === "datos" && (
-                <dl className="row mb-0">
-                  <dt className="col-sm-4">Nombre</dt>
-                  <dd className="col-sm-8">{usuario.name}</dd>
+                <>
+                  <dl className="row mb-0">
+                    <dt className="col-sm-4">Nombre</dt>
+                    <dd className="col-sm-8">{usuario.name}</dd>
 
-                  <dt className="col-sm-4">Usuario</dt>
-                  <dd className="col-sm-8">{usuario.username}</dd>
+                    <dt className="col-sm-4">Usuario</dt>
+                    <dd className="col-sm-8">{usuario.username}</dd>
 
-                  <dt className="col-sm-4">Email</dt>
-                  <dd className="col-sm-8">{usuario.email}</dd>
+                    <dt className="col-sm-4">Email</dt>
+                    <dd className="col-sm-8">{usuario.email}</dd>
 
-                  <dt className="col-sm-4">Plan</dt>
-                  <dd className="col-sm-8 d-flex align-items-center gap-2">
-                    <span className="text-capitalize">{usuario.plan}</span>
-                    <button
-                      className="btn btn-outline-success btn-sm"
-                      type="button"
-                      onClick={() => irAVista("confirmarPlan")}
-                    >
-                      Pasar a {planDestino}
-                    </button>
-                  </dd>
-                </dl>
+                    <dt className="col-sm-4">Plan</dt>
+                    <dd className="col-sm-8 d-flex align-items-center gap-2">
+                      <span className="text-capitalize">{usuario.plan}</span>
+                      <button
+                        className="btn btn-outline-success btn-sm"
+                        type="button"
+                        onClick={() => irAVista("confirmarPlan")}
+                      >
+                        Pasar a {planDestino}
+                      </button>
+                    </dd>
+                  </dl>
+                  <InformeUsoPlan plan={usuario.plan} />
+                </>
+                
               )}
 
               {/* Confirmación de cambio de plan */}

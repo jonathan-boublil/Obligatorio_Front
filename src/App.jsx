@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import Header from './componentes/Header';
 import Hero from './componentes/Hero';
 import LoginModal from './componentes/LoginModal';
@@ -13,9 +14,11 @@ import Services from './componentes/Services';
 import Contacto from './componentes/Contacto';
 import Reserva from './componentes/Reserva';
 import { RegisterModal } from "./componentes/RegisterModal";
+import { limpiarReservasSlice } from './redux/features/reservasSlice';
 
 // si hay token es true
 function App({ modalActivo }) {
+  const dispatch = useDispatch();
   const [estaLogueado, setEstaLogueado] = useState(
     window.localStorage.getItem("token") ? true : false
   )
@@ -35,6 +38,7 @@ function App({ modalActivo }) {
   };
 
   const logoutCorrecto = () => {
+    dispatch(limpiarReservasSlice());
     setEstaLogueado(false);
     setUsuario(null);
   };

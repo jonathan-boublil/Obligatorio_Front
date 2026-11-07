@@ -1,3 +1,9 @@
+import { useDispatch, useSelector } from "react-redux";
+import {
+    cargarReservasInicialesSlice,
+    actualizarReservaSlice,
+    eliminarReservaSlice,
+} from "../redux/features/reservasSlice";
 import { useEffect, useState } from "react";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { listarReservasApi } from "../services/userServices";
@@ -12,9 +18,13 @@ const formatearFecha = (fecha) => {
 // Reservas del usuario logueado, con edición en la misma fila y eliminación.
 // "actualizar" cambia cada vez que se crea una reserva nueva, para volver a pedir la lista
 const MisReservas = ({ actualizar }) => {
+    const dispatch = useDispatch();
+    const reservas = useSelector(
+        (state) => state.reservaSlice.lista,
+    );
+    
     // "lista" | "eliminar"
     const [vista, setVista] = useState("lista");
-    const [reservas, setReservas] = useState([]);
     const [filtroMascota, setFiltroMascota] = useState("");
 
     const [cargando, setCargando] = useState(false);
@@ -37,23 +47,27 @@ const MisReservas = ({ actualizar }) => {
 
     //se piden las reservas al mostrar la lista y cada vez que se crea una reserva nueva
     useEffect(() => {
-        if (vista !== "lista") return;
-
         const cargarReservas = async () => {
             setCargando(true);
+            setMensajeError("");
+
             try {
                 const lista = await listarReservasApi();
-                setReservas(lista);
+                dispatch(cargarReservasInicialesSlice(lista));
             } catch (error) {
-                console.error(error);
-                setMensajeError(obtenerMensajeError(error, "No se pudieron cargar las reservas."));
+                setMensajeError(
+                    obtenerMensajeError(
+                        error,
+                        "No se pudieron cargar las reservas.",
+                    ),
+                );
             } finally {
                 setCargando(false);
             }
         };
 
         cargarReservas();
-    }, [vista, actualizar]);
+    }, [actualizar, dispatch]);
 
     //la fila pasa a tener inputs con la fecha, hora y nombre de mascota actuales de la reserva
     const empezarEdicion = (reserva) => {
@@ -108,16 +122,14 @@ const MisReservas = ({ actualizar }) => {
                 nombreMascota !== reservaOriginal.nombreMascota ? nombreMascota : undefined
             );
             //se actualiza solo esa fila con lo que devolvió el back, sin volver a pedir toda la lista
-            setReservas(reservas.map((reserva) =>
-                reserva.id === editandoId
-                    ? {
-                        ...reserva,
-                        fecha: reservaEditada.fecha,
-                        hora: reservaEditada.hora,
-                        nombreMascota: reservaEditada.nombreMascota,
-                    }
-                    : reserva
-            ));
+            dispatch(
+                actualizarReservaSlice({
+                    id: editandoId,
+                    fecha: reservaEditada.fecha,
+                    hora: reservaEditada.hora,
+                    nombreMascota: reservaEditada.nombreMascota,
+                }),
+            );
             setEditandoId(null);
         } catch (error) {
             //si falla la fila sigue en edición para poder corregir
@@ -133,6 +145,7 @@ const MisReservas = ({ actualizar }) => {
         setCargando(true);
         try {
             await eliminarReservaApi(reservaElegida.id);
+            dispatch(eliminarReservaSlice(reservaElegida.id));
             volverALista();
         } catch (error) {
             console.error(error);
