@@ -17,16 +17,33 @@ export const RegisterModal = ({onLogin}) => {
    const [mensajeError, setMensajeError] = useState("");
    const [mensajeExito, setMensajeExito] = useState("");
 
-  const formularioCompleto = 
-      valores.name !=="" &&
-      valores.username !=="" &&
-      valores.email !=="" &&
-      valores.password !=="" &&
-      valores.confirmPassword !=="";
+   const nombreValido =
+    valores.name.trim().length >= 3 &&
+    valores.name.trim().length <= 30;
+
+    const usuarioValido =
+      valores.username.length >= 3 &&
+      /^[a-zA-Z0-9]+$/.test(valores.username);
+
+    const emailValido =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        valores.email,
+      );
+
+    const passwordValida =
+      valores.password.length >= 3 &&
+      valores.password.length <= 30;
+
+    const confirmacionValida =
+      valores.confirmPassword !== "" &&
+      valores.password === valores.confirmPassword;
 
   const formularioValido = 
-    formularioCompleto && 
-    valores.password === valores.confirmPassword;
+      nombreValido &&
+      usuarioValido &&
+      emailValido &&
+      passwordValida &&
+      confirmacionValida;
 
    const onSubmit = async (event) => {
         event.preventDefault();
