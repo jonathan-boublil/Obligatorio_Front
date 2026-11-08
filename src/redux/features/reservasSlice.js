@@ -1,6 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-// la lista va dentro de un objeto para poder sumar más datos al slice más adelante (ej: cargando)
 const initialState = {
     lista: [],
 };
@@ -26,7 +25,7 @@ const reservaSlice = createSlice({
                 state.lista[indice] = reservaActualizada;
             }
         },
-        borrarReservaSlice: (state, action) => {
+        eliminarReservaSlice: (state, action) => {
             const id = action.payload;
             state.lista = state.lista.filter((reserva) => reserva.id !== id);
         },
@@ -38,6 +37,6 @@ const reservaSlice = createSlice({
 });
 
 
-export const { cargarReservasInicialesSlice, agregarReservaSlice, actualizarReservaSlice, borrarReservaSlice, limpiarReservasSlice } =
+export const { cargarReservasInicialesSlice, agregarReservaSlice, actualizarReservaSlice, eliminarReservaSlice, limpiarReservasSlice } =
     reservaSlice.actions;
 export default reservaSlice.reducer;

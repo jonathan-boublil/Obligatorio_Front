@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { limpiarReservasSlice } from './redux/features/reservasSlice';
 import Header from './componentes/Header';
 import Inicio from './componentes/Inicio';
 import RutaProtegida from './componentes/RutaProtegida';
@@ -14,13 +13,13 @@ import MisReservas from './componentes/MisReservas';
 import Contacto from './componentes/Contacto';
 import Reserva from './componentes/Reserva';
 import { RegisterModal } from "./componentes/RegisterModal";
+import { limpiarReservasSlice } from './redux/features/reservasSlice';
 
 // One page: todas las secciones están en la misma página y se muestran según el rol.
 // "modalActivo" viene de la ruta (Rutas.jsx) y abre un modal encima de la página
 // si hay token es true
 function App({ modalActivo }) {
   const dispatch = useDispatch();
-
   const [estaLogueado, setEstaLogueado] = useState(
     window.localStorage.getItem("token") ? true : false
   )

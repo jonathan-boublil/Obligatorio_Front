@@ -9,6 +9,7 @@ import { listarReservasApi } from "../services/userServices";
 import { horarios, fechaParaBack, fechaDelBack, obtenerFechasDisponibles, validarFecha, estaOcupado } from "../services/fechasReserva";
 import { validarEdadMascota } from "../services/validacionesReserva";
 import SubirImagen from "./SubirImagen";
+import { subirImagenSeleccionada, limpiarImagenSubida } from "../services/imageServices";
 
 // mismo límite que el back (reserva.service): los clientes que no son premium tienen un tope por año calendario
 const LIMITE_RESERVAS_ANUALES_PLUS = 4;
@@ -95,6 +96,8 @@ const Reserva = ({ usuario }) => {
     const categorias = useSelector((state) => state.categoriasSlice);
     const reservas = useSelector((state) => state.reservaSlice.lista);
 
+    // imagen elegida (todavía sin subir): se sube a Cloudinary recién al confirmar la reserva
+    const [archivoImagen, setArchivoImagen] = useState(null);
     const [pasoActual, setPasoActual] = useState(1);
     const [valores, setValores] = useState(reservaVacia);
     const [mensajeError, setMensajeError] = useState("");
@@ -196,6 +199,7 @@ const Reserva = ({ usuario }) => {
             setMensajeError("");
             setErrorFecha("");
             setResetImagen((valorActual) => valorActual + 1);
+            setArchivoImagen(null);
         };
 
         const timer = setTimeout(limpiarFormulario, 5000);
@@ -210,14 +214,6 @@ const Reserva = ({ usuario }) => {
                 ...valoresActuales,
                 [name]: value,
         }));
-    };
-
-    const handleImageUrl = (imageUrl) => {
-        cambiarValor("imageUrl", imageUrl);
-    };
-
-    const handleImagePublicId = (imagePublicId) => {
-        cambiarValor("imagePublicId", imagePublicId);
     };
 
     const handleChange = (e) => {
@@ -254,32 +250,53 @@ const Reserva = ({ usuario }) => {
     };
 
     const confirmarHandler = async () => {
+    setMensajeError("");
+    setEnviando(true);
+
+    let imagenSubida = null;
+
+    try {
+        imagenSubida = await subirImagenSeleccionada(archivoImagen);
+
         const reserva = {
             ...valores,
             fecha: fechaParaBack(valores.fecha),
             nombreMascota: valores.nombreMascota.trim(),
             edadMascota: Number(valores.edadMascota),
             motivo: valores.motivo.trim(),
+            imageUrl: imagenSubida?.secure_url || "",
+            imagePublicId: imagenSubida?.public_id || "",
         };
 
-        setMensajeError("");
-        setEnviando(true);
-        try {
-            //el token del usuario logueado lo agrega el interceptor de axios
-            const reservaCreada = await crearReservaApi(reserva);
-            //se agrega a Redux con el nombre del servicio (el back devuelve solo el id de la categoría),
-            //así cuenta para el límite del plan y aparece en "Mis reservas"
-            dispatch(agregarReservaSlice({
-                ...reservaCreada,
-                categoriaId: { id: categoriaElegida.id, nombre: categoriaElegida.nombre },
-            }));
-            setConfirmada(true);
-        } catch (error) {
-            console.error(error);
-            setMensajeError(obtenerMensajeError(error, "No se pudo crear la reserva."));
-        } finally {
-            setEnviando(false);
-        }
+        //el token del usuario logueado lo agrega el interceptor de axios
+        const reservaCreada = await crearReservaApi(reserva);
+        //se agrega a Redux con el nombre del servicio (el back devuelve solo el id de la categoría),
+        //así cuenta para el límite del plan y aparece en "Mis reservas"
+        dispatch(agregarReservaSlice({
+            ...reservaCreada,
+            categoriaId: { id: categoriaElegida.id, nombre: categoriaElegida.nombre },
+        }));
+    } catch (error) {
+        //si la reserva no se pudo crear, se borra la imagen que se acababa de subir
+        await limpiarImagenSubida(
+        imagenSubida?.public_id,
+        );
+
+        console.error(error);
+
+        setMensajeError(
+        obtenerMensajeError(
+            error,
+            "No se pudo crear la reserva.",
+        ),
+        );
+
+        return;
+    } finally {
+        setEnviando(false);
+    }
+
+    setConfirmada(true);
     };
 
     const categoriaElegida = categorias.find(
@@ -471,7 +488,7 @@ const Reserva = ({ usuario }) => {
                                         min="0"
                                         max="100"
                                         step="1"
-                                        placeholder="3"
+                                        placeholder="0"
                                         value={valores.edadMascota}
                                         onChange={handleChange}
                                     />
@@ -499,8 +516,7 @@ const Reserva = ({ usuario }) => {
                         <div className={pasoActual === 3 ? "" : "d-none"}>
                             <SubirImagen
                                 key={resetImagen}
-                                handleImgURL={handleImageUrl}
-                                handleImgPublicId={handleImagePublicId}
+                                onArchivoSeleccionado={setArchivoImagen}
                             />
                         </div>
 

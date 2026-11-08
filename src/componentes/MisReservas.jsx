@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { cargarReservasInicialesSlice, actualizarReservaSlice, borrarReservaSlice } from "../redux/features/reservasSlice";
+import { cargarReservasInicialesSlice, actualizarReservaSlice, eliminarReservaSlice } from "../redux/features/reservasSlice";
 import { cargaInicialCategoriasSlice } from "../redux/features/categoriasSlice";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { listarReservasApi } from "../services/userServices";
 import { reprogramarReservaApi, eliminarReservaApi, obtenerReservaApi, obtenerQrReservaApi, listarCategoriasApi, horariosOcupadosApi } from "../services/reservaServices";
-import { deleteImage } from "../services/imageServices";
+import { subirImagenSeleccionada, limpiarImagenSubida } from "../services/imageServices";
 import { horarios, fechaParaBack, fechaDelBack, obtenerFechasDisponibles, validarFecha, estaOcupado, reservaYaPaso } from "../services/fechasReserva";
 import { validarEdadMascota } from "../services/validacionesReserva";
 import SubirImagen from "./SubirImagen";
@@ -55,10 +55,8 @@ const MisReservas = () => {
     const [errorFecha, setErrorFecha] = useState("");
     // horas ocupadas del día elegido al editar (se guarda la fecha para no mostrar las de otro día mientras carga)
     const [ocupadosEdicion, setOcupadosEdicion] = useState({ fecha: "", horas: [] });
-    // imagen nueva subida al editar ("" si no se cambió); van en estados separados porque
-    // SubirImagen avisa la url y el public_id uno detrás del otro
-    const [nuevaImageUrl, setNuevaImageUrl] = useState("");
-    const [nuevaImagePublicId, setNuevaImagePublicId] = useState("");
+    // imagen nueva elegida al editar (null si no se cambió); se sube a Cloudinary recién al guardar
+    const [archivoNuevaImagen, setArchivoNuevaImagen] = useState(null);
 
     // reserva que se va a eliminar
     const [reservaElegida, setReservaElegida] = useState(null);
@@ -87,12 +85,18 @@ const MisReservas = () => {
     useEffect(() => {
         const cargarReservas = async () => {
             setCargando(true);
+            setMensajeError("");
+
             try {
                 const lista = await listarReservasApi();
                 dispatch(cargarReservasInicialesSlice(lista));
             } catch (error) {
-                console.error(error);
-                setMensajeError(obtenerMensajeError(error, "No se pudieron cargar las reservas."));
+                setMensajeError(
+                    obtenerMensajeError(
+                        error,
+                        "No se pudieron cargar las reservas.",
+                    ),
+                );
             } finally {
                 setCargando(false);
             }
@@ -151,23 +155,11 @@ const MisReservas = () => {
         }
     };
 
-    //si se subió una imagen nueva y no se guardó, se borra de Cloudinary para que no quede suelta
-    const descartarImagenNueva = async () => {
-        if (nuevaImagePublicId) {
-            try {
-                await deleteImage(nuevaImagePublicId);
-            } catch (error) {
-                console.error(error);
-            }
-        }
-        setNuevaImageUrl("");
-        setNuevaImagePublicId("");
-    };
-
     //cancelar descarta los cambios y vuelve a la lista de reservas
+    //(la imagen elegida todavía no se subió, así que no hay nada que borrar de Cloudinary)
     const cancelarEdicion = () => {
         setErrorFecha("");
-        descartarImagenNueva();
+        setArchivoNuevaImagen(null);
         volverALista();
     };
 
@@ -238,7 +230,8 @@ const MisReservas = () => {
     };
 
     //fecha y hora se mandan siempre (el back las pide); el resto solo si cambió
-    const armarCambios = () => {
+    //"imagenSubida" es la respuesta de Cloudinary si se eligió una imagen nueva
+    const armarCambios = (imagenSubida = null) => {
         const datos = {
             nuevaFecha: fechaParaBack(valoresEdicion.fecha),
             nuevaHora: valoresEdicion.hora,
@@ -254,9 +247,9 @@ const MisReservas = () => {
         if (edad !== reservaDetalle.edadMascota) {
             datos.edadMascota = edad;
         }
-        if (nuevaImageUrl) {
-            datos.imageUrl = nuevaImageUrl;
-            datos.imagePublicId = nuevaImagePublicId;
+        if (imagenSubida) {
+            datos.imageUrl = imagenSubida.secure_url;
+            datos.imagePublicId = imagenSubida.public_id;
         }
         return datos;
     };
@@ -278,6 +271,7 @@ const MisReservas = () => {
 
     const hayCambios =
         editando && reservaDetalle && (
+            archivoNuevaImagen !== null ||
             Object.keys(armarCambios()).length > 2 ||
             valoresEdicion.fecha !== fechaDelBack(reservaDetalle.fecha) ||
             valoresEdicion.hora !== reservaDetalle.hora
@@ -286,17 +280,22 @@ const MisReservas = () => {
     const guardarReserva = async () => {
         setMensajeError("");
         setGuardando(true);
+
+        let imagenSubida = null;
         try {
-            const reservaEditada = await reprogramarReservaApi(reservaDetalle.id, armarCambios());
+            //si se eligió una imagen nueva, se sube primero (el back borra la anterior al guardar)
+            imagenSubida = await subirImagenSeleccionada(archivoNuevaImagen);
+
+            const reservaEditada = await reprogramarReservaApi(reservaDetalle.id, armarCambios(imagenSubida));
             //el back devuelve la reserva completa (con el motivo profesional nuevo si cambió el motivo):
             //se muestra en el detalle y se reemplaza en Redux, así la lista ya queda actualizada
             setReservaDetalle(reservaEditada);
             dispatch(actualizarReservaSlice(reservaEditada));
-            setNuevaImageUrl("");
-            setNuevaImagePublicId("");
+            setArchivoNuevaImagen(null);
             setEditando(false);
         } catch (error) {
-            //si falla sigue en edición para poder corregir
+            //si no se pudo guardar, se borra la imagen que se acababa de subir; sigue en edición para corregir
+            await limpiarImagenSubida(imagenSubida?.public_id);
             console.error(error);
             setMensajeError(obtenerMensajeError(error, "No se pudo editar la reserva."));
         } finally {
@@ -309,7 +308,7 @@ const MisReservas = () => {
         setCargando(true);
         try {
             await eliminarReservaApi(reservaElegida.id);
-            dispatch(borrarReservaSlice(reservaElegida.id));
+            dispatch(eliminarReservaSlice(reservaElegida.id));
             volverALista();
         } catch (error) {
             console.error(error);
@@ -619,8 +618,8 @@ const MisReservas = () => {
                                         <>
                                             <dt className="col-sm-4">Imagen</dt>
                                             <dd className="col-sm-8">
-                                                {/* al editar, la imagen actual se reemplaza si se sube una nueva */}
-                                                {reservaDetalle.imageUrl && !nuevaImageUrl && (
+                                                {/* al editar, la imagen actual se reemplaza si se elige una nueva */}
+                                                {reservaDetalle.imageUrl && !archivoNuevaImagen && (
                                                     <img
                                                         className="booking-image-preview"
                                                         src={reservaDetalle.imageUrl}
@@ -629,8 +628,7 @@ const MisReservas = () => {
                                                 )}
                                                 {editando && (
                                                     <SubirImagen
-                                                        handleImgURL={setNuevaImageUrl}
-                                                        handleImgPublicId={setNuevaImagePublicId}
+                                                        onArchivoSeleccionado={setArchivoNuevaImagen}
                                                     />
                                                 )}
                                             </dd>
