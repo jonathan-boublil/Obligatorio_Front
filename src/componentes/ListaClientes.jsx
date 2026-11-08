@@ -36,11 +36,25 @@ const ListaClientes = () => {
     const [valoresEdicion, setValoresEdicion] = useState(clienteVacio);
     const [guardando, setGuardando] = useState(false);
     const [mensajeError, setMensajeError] = useState("");
+    const [mensajeExito, setMensajeExito] = useState("");
 
     //cuando cambia la lista en Redux se vuelve a aplicar el filtro
     useEffect(() => {
         setListaClientesFiltrados(filtrarClientes(listaClientes, textoFiltro.current));
     }, [listaClientes]);
+
+    //el aviso verde de eliminación se oculta solo a los 4 segundos
+    useEffect(() => {
+        if (!mensajeExito) return;
+
+        const timer = setTimeout(() => {
+            setMensajeExito("");
+        }, 4000);
+
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [mensajeExito]);
 
     const idInputFiltro = useId();
 
@@ -108,12 +122,17 @@ const ListaClientes = () => {
     };
 
     const eliminarCliente = async () => {
+        //se guarda el nombre antes de sacarlo de Redux, para mostrarlo en el aviso
+        const clienteEliminado = listaClientes.find((cliente) => cliente.id === eliminandoId);
+
         setMensajeError("");
+        setMensajeExito("");
         setGuardando(true);
         try {
             await eliminarClienteApi(eliminandoId);
             dispatch(eliminarUserSlice(eliminandoId));
             setEliminandoId(null);
+            setMensajeExito(`Usuario ${clienteEliminado?.name} borrado correctamente.`);
         } catch (error) {
             console.error(error);
             setMensajeError(obtenerMensajeError(error, "No se pudo eliminar el cliente."));
@@ -127,6 +146,12 @@ const ListaClientes = () => {
             {mensajeError && (
                 <div className="alert alert-danger" role="alert">
                     {mensajeError}
+                </div>
+            )}
+
+            {mensajeExito && (
+                <div className="alert alert-success" role="status">
+                    {mensajeExito}
                 </div>
             )}
 
@@ -235,7 +260,7 @@ const ListaClientes = () => {
                                                     </>
                                                 ) : enEliminacion ? (
                                                     <>
-                                                        {/* se pide confirmar porque también se borran sus reservas */}
+                                                        {/* se pide confirmar antes de eliminar; si tiene reservas el back no lo permite y se muestra su mensaje */}
                                                         <button
                                                             className="btn btn-danger btn-sm"
                                                             type="button"

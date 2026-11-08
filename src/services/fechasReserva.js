@@ -6,6 +6,19 @@ export const horarios = [
     "17:00", "17:30",
 ];
 
+// "HH:mm" a minutos desde las 00:00, para poder restar horas
+const aMinutos = (hora) => {
+    const [horas, minutos] = hora.split(":").map(Number);
+    return horas * 60 + minutos;
+};
+
+// misma regla que el back: un horario está ocupado si hay otra reserva ese día a menos de 30 minutos
+export const estaOcupado = (horario, horasOcupadas) => {
+    return horasOcupadas.some(
+        (horaOcupada) => Math.abs(aMinutos(horaOcupada) - aMinutos(horario)) < 30
+    );
+};
+
 // Fecha LOCAL YYYY-MM-DD (sin UTC)
 export const formatearFecha = (fecha) => {
     const anio = fecha.getFullYear();
@@ -23,6 +36,12 @@ export const fechaParaBack = (fechaTexto) => {
 // el back devuelve la fecha en UTC (medianoche): se toma el día tal cual, sin correrlo por la zona horaria
 export const fechaDelBack = (fechaIso) => {
     return fechaIso.slice(0, 10);
+};
+
+// true si el día y la hora de la reserva ya pasaron (hora local, igual que la arma el back)
+export const reservaYaPaso = (fechaIso, hora) => {
+    const fechaHora = new Date(`${fechaDelBack(fechaIso)}T${hora}:00`);
+    return fechaHora.getTime() < Date.now();
 };
 
 export const esDomingo = (fechaTexto) => {

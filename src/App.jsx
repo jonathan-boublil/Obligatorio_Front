@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import Header from './componentes/Header';
-import Hero from './componentes/Hero';
+import Inicio from './componentes/Inicio';
+import RutaProtegida from './componentes/RutaProtegida';
 import LoginModal from './componentes/LoginModal';
 import MisDatosModal from './componentes/MisDatosModal';
 import Categorias from './componentes/Categorias';
@@ -9,13 +10,13 @@ import Agenda from './componentes/Agenda';
 import Informes from './componentes/Informes';
 import Clientes from './componentes/Clientes';
 import MisReservas from './componentes/MisReservas';
-import Professionals from './componentes/Professionals';
-import Services from './componentes/Services';
 import Contacto from './componentes/Contacto';
 import Reserva from './componentes/Reserva';
 import { RegisterModal } from "./componentes/RegisterModal";
 import { limpiarReservasSlice } from './redux/features/reservasSlice';
 
+// One page: todas las secciones están en la misma página y se muestran según el rol.
+// "modalActivo" viene de la ruta (Rutas.jsx) y abre un modal encima de la página
 // si hay token es true
 function App({ modalActivo }) {
   const dispatch = useDispatch();
@@ -28,9 +29,7 @@ function App({ modalActivo }) {
   )
 
   const esAdmin = usuario?.role === "admin";
-
-  const [contadorReservas, setContadorReservas] = useState(0);
-  const reservaCreada = () => setContadorReservas((c) => c + 1);
+  const esCliente = estaLogueado && !esAdmin;
 
   const loginCorrecto = (usuarioLogueado) => {
     setEstaLogueado(true);
@@ -38,9 +37,10 @@ function App({ modalActivo }) {
   };
 
   const logoutCorrecto = () => {
-    dispatch(limpiarReservasSlice());
     setEstaLogueado(false);
     setUsuario(null);
+    //se vacían las reservas del usuario que salió para que no se mezclen con las del próximo que entre
+    dispatch(limpiarReservasSlice());
   };
 
   const actualizarUsuario = (usuarioActualizado) => {
@@ -51,17 +51,20 @@ function App({ modalActivo }) {
   return (
     <>
       <Header estaLogueado={estaLogueado} esAdmin={esAdmin} onLogout={logoutCorrecto} />
-      {/* LoginModal se agrega aca para que el modal aparezca en la pantalla principal */}
+      {/* los modales se abren encima de la página */}
       {modalActivo === "login" && <LoginModal onLogin={loginCorrecto} />}
       {modalActivo === "registro" && <RegisterModal onLogin={loginCorrecto} />}
-      {modalActivo === "misDatos" && usuario && !esAdmin && <MisDatosModal usuario={usuario} onActualizarUsuario={actualizarUsuario} />}
+      {/* /mis-datos es solo para clientes logueados: sin sesión manda al login y al admin al inicio */}
+      {modalActivo === "misDatos" && (
+        <RutaProtegida estaLogueado={estaLogueado} permitido={Boolean(usuario) && !esAdmin}>
+          <MisDatosModal usuario={usuario} onActualizarUsuario={actualizarUsuario} onLogout={logoutCorrecto} />
+        </RutaProtegida>
+      )}
 
       <main>
-        <Hero estaLogueado={estaLogueado} />
-        <Services />
-        <Professionals />
-        {estaLogueado && !esAdmin && <Reserva usuario={usuario} onReservaCreada={reservaCreada} />}
-        {estaLogueado && !esAdmin && <MisReservas actualizar={contadorReservas} />}
+        <Inicio estaLogueado={estaLogueado} />
+        {esCliente && <Reserva usuario={usuario} />}
+        {esCliente && <MisReservas />}
         {esAdmin && <Clientes />}
         {esAdmin && <Categorias />}
         {esAdmin && <Agenda />}
