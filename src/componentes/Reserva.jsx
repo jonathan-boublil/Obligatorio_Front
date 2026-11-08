@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { cargaInicialCategoriasSlice } from "../redux/features/categoriasSlice";
+import { cargarReservasInicialesSlice, agregarReservaSlice } from "../redux/features/reservasSlice";
 import { obtenerMensajeError } from "../services/mensajeError";
-import { listarCategoriasApi, crearReservaApi } from "../services/reservaServices";
-import { horarios, fechaParaBack, obtenerFechasDisponibles, validarFecha } from "../services/fechasReserva";
+import { listarCategoriasApi, crearReservaApi, horariosOcupadosApi } from "../services/reservaServices";
+import { listarReservasApi } from "../services/userServices";
+import { horarios, fechaParaBack, fechaDelBack, obtenerFechasDisponibles, validarFecha, estaOcupado } from "../services/fechasReserva";
+import { validarEdadMascota } from "../services/validacionesReserva";
 import SubirImagen from "./SubirImagen";
+
+// mismo límite que el back (reserva.service): los clientes que no son premium tienen un tope por año calendario
+const LIMITE_RESERVAS_ANUALES_PLUS = 4;
+const MENSAJE_LIMITE = "Alcanzó el límite anual de reservas de su plan. Mejore su plan para obtener más beneficios.";
 
 const ChevronLeftIcon = () => {
     return (
@@ -78,33 +88,102 @@ const camposPorPaso = {
 };
 
 // se dibuja la reserva por primera vez
-const Reserva = ({ usuario, onReservaCreada }) => {
+// las categorías y las reservas del usuario vienen de Redux (acá se cargan al mostrar el formulario)
+const Reserva = ({ usuario }) => {
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const categorias = useSelector((state) => state.categoriasSlice);
+    const reservas = useSelector((state) => state.reservaSlice.lista);
+
     const [pasoActual, setPasoActual] = useState(1);
     const [valores, setValores] = useState(reservaVacia);
-    const [categorias, setCategorias] = useState([]);
     const [mensajeError, setMensajeError] = useState("");
     const [errorFecha, setErrorFecha] = useState("");
     const [enviando, setEnviando] = useState(false);
     const [confirmada, setConfirmada] = useState(false);
     const [resetImagen, setResetImagen] = useState(0);
+    // horas ocupadas del día elegido; se guarda la fecha para no mostrar las de otro día mientras carga
+    const [ocupados, setOcupados] = useState({ fecha: "", horas: [] });
 
     const fechasDisponibles = obtenerFechasDisponibles();
     const fechaMinima = fechasDisponibles[0];
     const fechaMaxima = fechasDisponibles[fechasDisponibles.length - 1];
 
-    //se cargan los servicios desde el back al mostrar el formulario
+    //se cargan los servicios desde el back al mostrar el formulario y se guardan en Redux
     useEffect(() => {
         const cargarCategorias = async () => {
             try {
                 const resultado = await listarCategoriasApi();
-                setCategorias(resultado);
+                dispatch(cargaInicialCategoriasSlice(resultado));
             } catch (error) {
                 console.error(error);
                 setMensajeError(obtenerMensajeError(error, "No se pudieron cargar los servicios."));
             }
         };
         cargarCategorias();
-    }, []);
+    }, [dispatch]);
+
+    //se piden las reservas del usuario para saber cuántas tiene en cada año (límite del plan)
+    useEffect(() => {
+        const cargarReservas = async () => {
+            try {
+                const lista = await listarReservasApi();
+                dispatch(cargarReservasInicialesSlice(lista));
+            } catch (error) {
+                //si falla no se bloquea el formulario: el back igual valida el límite al confirmar
+                console.error(error);
+            }
+        };
+        cargarReservas();
+    }, [dispatch]);
+
+    //cada vez que se elige un día se piden las horas ocupadas, así no se intenta reservar una que ya está tomada
+    useEffect(() => {
+        if (!valores.fecha) return;
+        const controller = new AbortController();
+
+        const cargarOcupados = async () => {
+            try {
+                const horas = await horariosOcupadosApi(fechaParaBack(valores.fecha), controller.signal);
+                setOcupados({ fecha: valores.fecha, horas });
+                //si el horario que ya estaba elegido quedó ocupado, se deselecciona
+                setValores((valoresActuales) =>
+                    valoresActuales.hora && estaOcupado(valoresActuales.hora, horas)
+                        ? { ...valoresActuales, hora: "" }
+                        : valoresActuales
+                );
+            } catch (error) {
+                //si se canceló porque cambiaron la fecha, no es un error
+                if (error.code === "ERR_CANCELED") return;
+                //si falla no se bloquea nada: el back igual rechaza un horario ocupado al confirmar
+                console.error(error);
+            }
+        };
+
+        cargarOcupados();
+        return () => {
+            controller.abort();
+        };
+    }, [valores.fecha]);
+
+    const horasOcupadas = ocupados.fecha === valores.fecha ? ocupados.horas : [];
+    const sinHorariosLibres = valores.fecha !== "" &&
+        horarios.every((horario) => estaOcupado(horario, horasOcupadas));
+
+    const esPremium = usuario?.plan?.toLowerCase() === "premium";
+
+    //el back cuenta las reservas del año calendario de la fecha pedida (anio en formato "AAAA")
+    const limiteAlcanzado = (anio) => {
+        if (esPremium) return false;
+        const reservasDelAnio = reservas.filter(
+            (reserva) => fechaDelBack(reserva.fecha).slice(0, 4) === anio
+        );
+        return reservasDelAnio.length >= LIMITE_RESERVAS_ANUALES_PLUS;
+    };
+
+    //si no queda cupo en ningún año de las fechas disponibles, no se deja empezar la reserva
+    const aniosDisponibles = [...new Set(fechasDisponibles.map((fecha) => fecha.slice(0, 4)))];
+    const sinCupo = aniosDisponibles.every(limiteAlcanzado);
 
     //a los 5 segundos de confirmar vuelve al paso 1 con el formulario vacío
     useEffect(() => {
@@ -147,16 +226,24 @@ const Reserva = ({ usuario, onReservaCreada }) => {
 
     const fechaHandler = (e) => {
         const fecha = e.target.value;
-        const error = validarFecha(fecha, fechaMinima, fechaMaxima);
+        let error = validarFecha(fecha, fechaMinima, fechaMaxima);
+
+        //las fechas disponibles pueden caer en otro año (fin de año), donde el cupo es otro
+        if (!error && fecha && limiteAlcanzado(fecha.slice(0, 4))) {
+            error = MENSAJE_LIMITE;
+        }
 
         setErrorFecha(error);
         cambiarValor("fecha", error ? "" : fecha);
     };
 
-    //hasta que no estén completos los campos del paso no se puede avanzar
+    //el input number deja escribir negativos y decimales aunque tenga min y step, por eso se valida acá
+    const errorEdad = validarEdadMascota(valores.edadMascota);
+
+    //hasta que no estén completos (y válidos) los campos del paso no se puede avanzar
     const pasoCompleto = camposPorPaso[pasoActual].every(
         (campo) => valores[campo].trim() !== ""
-    );
+    ) && (pasoActual !== 3 || errorEdad === "");
 
     const anteriorHandler = () => {
         setPasoActual(pasoActual - 1);
@@ -179,10 +266,14 @@ const Reserva = ({ usuario, onReservaCreada }) => {
         setEnviando(true);
         try {
             //el token del usuario logueado lo agrega el interceptor de axios
-            await crearReservaApi(reserva);
+            const reservaCreada = await crearReservaApi(reserva);
+            //se agrega a Redux con el nombre del servicio (el back devuelve solo el id de la categoría),
+            //así cuenta para el límite del plan y aparece en "Mis reservas"
+            dispatch(agregarReservaSlice({
+                ...reservaCreada,
+                categoriaId: { id: categoriaElegida.id, nombre: categoriaElegida.nombre },
+            }));
             setConfirmada(true);
-            //avisa para que "Mis reservas" vuelva a cargar la lista
-            onReservaCreada?.();
         } catch (error) {
             console.error(error);
             setMensajeError(obtenerMensajeError(error, "No se pudo crear la reserva."));
@@ -217,6 +308,20 @@ const Reserva = ({ usuario, onReservaCreada }) => {
                         <p className="booking-success-sub">
                             Enviaremos un correo electrónico de confirmación a {usuario?.email}
                         </p>
+                    </div>
+                ) : sinCupo ? (
+                    <div className="booking-card">
+                        <div className="alert alert-danger" role="alert">
+                            {MENSAJE_LIMITE}
+                        </div>
+
+                        <button
+                            className="btn btn-success"
+                            type="button"
+                            onClick={() => navigate("/mis-datos")}
+                        >
+                            Mejorar plan
+                        </button>
                     </div>
                 ) : (
                     <form className="booking-card" onSubmit={(e) => e.preventDefault()}>
@@ -274,18 +379,30 @@ const Reserva = ({ usuario, onReservaCreada }) => {
                                 <div className="booking-field">
                                     <p className="booking-step-title">Seleccione un horario</p>
 
+                                    {/* los horarios ya reservados ese día aparecen tachados y no se pueden elegir */}
                                     <div className="booking-times">
-                                        {horarios.map((horario) => (
-                                            <button
-                                                className={`booking-time ${valores.hora === horario ? "selected" : ""}`}
-                                                type="button"
-                                                key={horario}
-                                                onClick={() => cambiarValor("hora", horario)}
-                                            >
-                                                {horario}
-                                            </button>
-                                        ))}
+                                        {horarios.map((horario) => {
+                                            const ocupado = estaOcupado(horario, horasOcupadas);
+
+                                            return (
+                                                <button
+                                                    className={`booking-time ${valores.hora === horario ? "selected" : ""}`}
+                                                    type="button"
+                                                    key={horario}
+                                                    disabled={ocupado}
+                                                    title={ocupado ? "Horario ocupado" : undefined}
+                                                    onClick={() => cambiarValor("hora", horario)}
+                                                >
+                                                    {horario}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
+                                    {sinHorariosLibres && (
+                                        <p className="booking-error">
+                                            No quedan horarios disponibles para ese día. Elija otra fecha.
+                                        </p>
+                                    )}
                                 </div>
                             </>
                         )}
@@ -348,7 +465,7 @@ const Reserva = ({ usuario, onReservaCreada }) => {
                                     </label>
                                     <input
                                         id="bookingPetAge"
-                                        className="form-control booking-input"
+                                        className={`form-control booking-input ${errorEdad ? "booking-input-error" : ""}`}
                                         type="number"
                                         name="edadMascota"
                                         min="0"
@@ -358,6 +475,7 @@ const Reserva = ({ usuario, onReservaCreada }) => {
                                         value={valores.edadMascota}
                                         onChange={handleChange}
                                     />
+                                    {errorEdad && <p className="booking-error">{errorEdad}</p>}
                                 </div>
 
                                 <div className="booking-field">

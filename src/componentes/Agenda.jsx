@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { agendaDelDiaApi } from "../services/reservaServices";
-import { formatearFecha, fechaParaBack } from "../services/fechasReserva";
+import { formatearFecha, fechaParaBack, reservaYaPaso } from "../services/fechasReserva";
 
 // Agenda del día para el admin: todas las reservas de la fecha elegida
 const Agenda = () => {
@@ -87,7 +87,12 @@ const Agenda = () => {
                                             <td>{reserva.cliente?.name}</td>
                                             <td className="text-capitalize">{reserva.categoriaId?.nombre}</td>
                                             <td>{reserva.nombreMascota}</td>
-                                            <td className="text-capitalize">{reserva.estado}</td>
+                                            {/* si el día y la hora ya pasaron, la reserva figura como finalizada */}
+                                            {reservaYaPaso(reserva.fecha, reserva.hora) ? (
+                                                <td className="text-muted">Finalizada</td>
+                                            ) : (
+                                                <td className="text-capitalize">{reserva.estado}</td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>

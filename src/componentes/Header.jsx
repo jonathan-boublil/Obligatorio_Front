@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
 const Header = ({estaLogueado, esAdmin, onLogout}) => {
@@ -17,13 +17,13 @@ const Header = ({estaLogueado, esAdmin, onLogout}) => {
         aria-label="Navegación principal"
       >
         <div className="container">
-          <a className="navbar-brand" href="#inicio" aria-label="Ir al inicio">
+          <Link className="navbar-brand" to="/" aria-label="Ir al inicio">
             <img
               className="navbar-logo"
               src={logo}
               alt="Hüellas, Absolutely pet-friendly"
             />
-          </a>
+          </Link>
 
           <button
             className="navbar-toggler"
@@ -42,37 +42,39 @@ const Header = ({estaLogueado, esAdmin, onLogout}) => {
             className="collapse navbar-collapse justify-content-end"
           >
             <ul className="navbar-nav align-items-lg-center">
+              {/* one page: cada opción baja a su sección con el ancla */}
               <li className="nav-item">
-                <a className="nav-link" href="#servicios">
+                <a className="nav-link" href="/#servicios">
                   Servicios
                 </a>
               </li>
 
               <li className="nav-item">
-                <a className="nav-link" href="#profesionales">
+                <a className="nav-link" href="/#profesionales">
                   Profesionales
                 </a>
               </li>
 
               {estaLogueado && !esAdmin && (
                 <li className="nav-item">
-                  <a className="nav-link" href="#reservas">
+                  <a className="nav-link" href="/#reservas">
                     Reservas
                   </a>
                 </li>
               )}
               {estaLogueado && !esAdmin && (
                 <li className="nav-item">
-                  <a className="nav-link" href="#mis-reservas">
+                  <a className="nav-link" href="/#mis-reservas">
                     Mis reservas
                   </a>
                 </li>
               )}
+
               {estaLogueado && (
                 <li className="nav-item">
-                  {/* el admin ve la agenda del día en lugar de sus datos */}
+                  {/* el admin ve la agenda del día en lugar de sus datos (mis datos es un modal con su ruta) */}
                   {esAdmin ? (
-                    <a className="nav-link" href="#agenda">
+                    <a className="nav-link" href="/#agenda">
                       Agenda
                     </a>
                   ) : (
@@ -84,21 +86,21 @@ const Header = ({estaLogueado, esAdmin, onLogout}) => {
               )}
               {estaLogueado && esAdmin && (
                 <li className="nav-item">
-                  <a className="nav-link" href="#informes">
+                  <a className="nav-link" href="/#informes">
                     Informes
                   </a>
                 </li>
               )}
               {estaLogueado && esAdmin && (
                 <li className="nav-item">
-                  <a className="nav-link" href="#clientes">
+                  <a className="nav-link" href="/#clientes">
                     Clientes
                   </a>
                 </li>
               )}
               {estaLogueado && esAdmin && (
                 <li className="nav-item">
-                  <a className="nav-link" href="#categorias">
+                  <a className="nav-link" href="/#categorias">
                     Categorías
                   </a>
                 </li>
