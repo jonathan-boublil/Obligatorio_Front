@@ -3,7 +3,10 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   lista: [],
   agenda: [],
+  // reservas de todo el sistema para el gráfico del admin: [{ categoriaId: { nombre }, cliente: id }]
   informe: [],
+  // ids de los clientes tildados en la lista de Clientes; vacío = el gráfico muestra el total del sistema
+  clientesSeleccionados: [],
 };
 
 // reservas del cliente logueado: las usa Reserva (para el límite anual del plan) y MisReservas (la lista)
@@ -51,9 +54,9 @@ const reservaSlice = createSlice({
                     reserva.categoriaId.nombre = nombreNuevo;
                 }
             });
-            state.informe.forEach((categoria) => {
-                if (categoria.nombre === nombreAnterior) {
-                    categoria.nombre = nombreNuevo;
+            state.informe.forEach((reserva) => {
+                if (reserva.categoriaId?.nombre === nombreAnterior) {
+                    reserva.categoriaId.nombre = nombreNuevo;
                 }
             });
             state.lista.forEach((reserva) => {
@@ -61,6 +64,25 @@ const reservaSlice = createSlice({
                     reserva.categoriaId.nombre = nombreNuevo;
                 }
             });
+        },
+
+        //tilda o destilda un cliente en la lista de Clientes (el gráfico suma los tildados)
+        alternarClienteInformeSlice: (state, action) => {
+            const idCliente = action.payload;
+            if (state.clientesSeleccionados.includes(idCliente)) {
+                state.clientesSeleccionados = state.clientesSeleccionados.filter((id) => id !== idCliente);
+            } else {
+                state.clientesSeleccionados.push(idCliente);
+            }
+        },
+        //destilda un cliente (se usa al eliminarlo, para que no quede seleccionado un cliente que ya no existe)
+        quitarClienteInformeSlice: (state, action) => {
+            const idCliente = action.payload;
+            state.clientesSeleccionados = state.clientesSeleccionados.filter((id) => id !== idCliente);
+        },
+        //destilda todos: el gráfico vuelve a mostrar el total del sistema
+        limpiarClientesInformeSlice: (state) => {
+            state.clientesSeleccionados = [];
         },
     },
 });
@@ -75,5 +97,27 @@ export const {
   cargarAgendaSlice,
   cargarInformeSlice,
   renombrarCategoriaEnReservasSlice,
+  alternarClienteInformeSlice,
+  quitarClienteInformeSlice,
+  limpiarClientesInformeSlice,
 } = reservaSlice.actions;
 export default reservaSlice.reducer;
+
+
+
+// selector para el gráfico de Informes (igual que filtrarTareasPorSearch de la clase):
+// devuelve las reservas del informe filtradas por los clientes tildados en la lista de Clientes.
+// state se lo pasa el useSelector
+export const filtrarInformePorClientes = (state) => {
+    const clientesSeleccionados = state.reservaSlice.clientesSeleccionados;
+    const informe = state.reservaSlice.informe;
+
+    if (clientesSeleccionados.length === 0) {
+        return informe;
+    } else {
+        const auxInformeFiltrado = informe.filter((reserva) =>
+            clientesSeleccionados.includes(reserva.cliente),
+        );
+        return auxInformeFiltrado;
+    }
+};

@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import Grafica from "./Grafica";
 import { informeReservasPorCategoriaApi } from "../services/reservaServices";
 import { obtenerMensajeError } from "../services/mensajeError";
-import { cargarInformeSlice } from "../redux/features/reservasSlice";
+import { cargarInformeSlice, limpiarClientesInformeSlice, filtrarInformePorClientes } from "../redux/features/reservasSlice";
+import { useObtenerNombreUsuario } from "../utils/utils";
 
 const reduceReservas = (acumulador, reserva) => {
   const categoria = reserva.categoriaId?.nombre;
@@ -21,11 +22,18 @@ const reduceReservas = (acumulador, reserva) => {
   return acumulador;
 };
 
+// Gráfico de reservas por categoría para el admin.
+// Sin clientes tildados en la lista de Clientes muestra el total del sistema;
+// con clientes tildados suma solamente las reservas de esos clientes
 const Informes = () => {
   const dispatch = useDispatch();
-  const informe = useSelector(
-    (state) => state.reservaSlice.informe,
+  //reservas ya filtradas por los clientes tildados (selector del slice, como en la clase)
+  const reservasDelGrafico = useSelector(filtrarInformePorClientes);
+  const clientesSeleccionados = useSelector(
+    (state) => state.reservaSlice.clientesSeleccionados,
   );
+  //custom hook de la clase: pasa del id de un cliente a su nombre
+  const obtenerNombreUsuario = useObtenerNombreUsuario();
 
   const [cargando, setCargando] = useState(false);
   const [mensajeError, setMensajeError] = useState("");
@@ -36,21 +44,9 @@ const Informes = () => {
       setCargando(true);
 
       try {
+        //Redux guarda las reservas con su categoría y su cliente; el gráfico se arma abajo según los tildados
         const reservas = await informeReservasPorCategoriaApi();
-        const reservasPorCategoria = reservas.reduce(
-          reduceReservas,
-          {},
-        );
-
-        //Redux guarda solamente los datos que necesita la gráfica.
-        const datosInforme = Object.entries(
-          reservasPorCategoria,
-        ).map(([nombre, cantidad]) => ({
-          nombre,
-          cantidad,
-        }));
-
-        dispatch(cargarInformeSlice(datosInforme));
+        dispatch(cargarInformeSlice(reservas));
       } catch (error) {
         console.error(error);
         dispatch(cargarInformeSlice([]));
@@ -68,15 +64,24 @@ const Informes = () => {
     cargarInforme();
   }, [dispatch]);
 
-  const etiquetas = informe.map(
-    (categoria) =>
-      categoria.nombre.charAt(0).toUpperCase() +
-      categoria.nombre.slice(1),
+  const hayClientesSeleccionados = clientesSeleccionados.length > 0;
+
+  const reservasPorCategoria = reservasDelGrafico.reduce(
+    reduceReservas,
+    {},
   );
 
-  const datos = informe.map(
-    (categoria) => categoria.cantidad,
+  const etiquetas = Object.keys(reservasPorCategoria).map(
+    (nombre) => nombre.charAt(0).toUpperCase() + nombre.slice(1),
   );
+
+  const datos = Object.values(reservasPorCategoria);
+
+  //nombres de los clientes tildados para el subtítulo (si todavía no cargó la lista, se omiten)
+  const nombresSeleccionados = clientesSeleccionados
+    .map((id) => obtenerNombreUsuario(id))
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <section id="informes" className="booking-section">
@@ -84,7 +89,11 @@ const Informes = () => {
         <div className="section-heading">
           <h2>Informes</h2>
 
-          <p>Cantidad de reservas por categoría</p>
+          <p>
+            {hayClientesSeleccionados
+              ? `Reservas por categoría de: ${nombresSeleccionados || "los clientes seleccionados"}`
+              : "Cantidad de reservas por categoría de todo el sistema"}
+          </p>
         </div>
 
         <div className="booking-card admin-card">
@@ -97,18 +106,37 @@ const Informes = () => {
             </div>
           )}
 
+          {/* para volver al total sin tener que destildar uno por uno */}
+          {hayClientesSeleccionados && (
+            <div className="d-flex justify-content-end mb-3">
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                type="button"
+                onClick={() => dispatch(limpiarClientesInformeSlice())}
+              >
+                Ver total del sistema
+              </button>
+            </div>
+          )}
+
           {cargando ? (
             <p className="mb-0">Cargando informe...</p>
           ) : datos.length === 0 ? (
             <p className="mb-0">
-              No hay reservas para mostrar.
+              {hayClientesSeleccionados
+                ? "Los clientes seleccionados no tienen reservas."
+                : "No hay reservas para mostrar."}
             </p>
           ) : (
             <div className="report-chart">
               <Grafica
                 etiquetas={etiquetas}
                 datos={datos}
-                nombreGrafica="Reservas por categoría"
+                nombreGrafica={
+                  hayClientesSeleccionados
+                    ? "Reservas por categoría de los clientes seleccionados"
+                    : "Reservas por categoría"
+                }
                 nombreDatos="Cantidad de reservas"
               />
             </div>
