@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { cargarReservasInicialesSlice, actualizarReservaSlice, eliminarReservaSlice } from "../redux/features/reservasSlice";
 import { cargaInicialCategoriasSlice } from "../redux/features/categoriasSlice";
 import { obtenerMensajeError } from "../services/mensajeError";
-import { listarReservasApi } from "../services/userServices";
+import { listarReservasApi, listarReservasPaginadasApi } from "../services/userServices";
 import { reprogramarReservaApi, eliminarReservaApi, obtenerReservaApi, obtenerQrReservaApi, listarCategoriasApi, horariosOcupadosApi } from "../services/reservaServices";
 import { subirImagenSeleccionada, limpiarImagenSubida } from "../services/imageServices";
 import { horarios, fechaParaBack, fechaDelBack, obtenerFechasDisponibles, validarFecha, estaOcupado, reservaYaPaso } from "../services/fechasReserva";
@@ -12,6 +12,9 @@ import SubirImagen from "./SubirImagen";
 
 // mismos tipos de mascota que en el formulario de Reserva
 const tiposMascota = ["Perro", "Gato", "Sapo", "Tortuga"];
+
+// cantidad de reservas por página en la tabla (el back las devuelve de la más nueva a la más vieja)
+const RESERVAS_POR_PAGINA = 2;
 
 // campos que se editan en el detalle (el estado y el motivo profesional no se editan)
 const edicionVacia = {
@@ -30,8 +33,64 @@ const formatearFecha = (fecha) => {
 };
 
 // en la tabla el motivo se corta para que no ocupe toda la fila (el texto completo se ve en el detalle)
-const recortarTexto = (texto = "", maximo = 10) => {
+const recortarTexto = (texto = "", maximo = 20) => {
     return texto.length > maximo ? `${texto.slice(0, maximo)}...` : texto;
+};
+
+// íconos de las acciones de cada reserva (mismo estilo que los de Reserva)
+const QrIcon = () => {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4M20 17v3" />
+        </svg>
+    );
+};
+
+const PencilIcon = () => {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+    );
+};
+
+const TrashIcon = () => {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M3 6h18" />
+            <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6M14 11v6" />
+        </svg>
+    );
 };
 
 // Reservas del usuario logueado, con detalle (donde se edita) y eliminación.
@@ -44,6 +103,12 @@ const MisReservas = () => {
     // "lista" | "detalle" | "eliminar"
     const [vista, setVista] = useState("lista");
     const [filtroMascota, setFiltroMascota] = useState("");
+
+    // paginado hecho en el back (como en clase): se pide una página y el back devuelve
+    // esas reservas más el total y la cantidad de páginas para armar los controles
+    const [paginaActual, setPaginaActual] = useState(1);
+    const [pagina, setPagina] = useState({ reservas: [], total: 0, totalPaginas: 0 });
+    const [cargandoPagina, setCargandoPagina] = useState(false);
 
     const [cargando, setCargando] = useState(false);
     const [guardando, setGuardando] = useState(false);
@@ -64,7 +129,8 @@ const MisReservas = () => {
     // reserva que se está viendo en detalle (la trae el back con todos sus datos)
     const [reservaDetalle, setReservaDetalle] = useState(null);
 
-    // url local de la imagen del QR de la reserva en detalle, y si no se pudo generar
+    // reserva cuyo QR se muestra agrandado (null si está cerrado), la url local de la imagen y si no se pudo generar
+    const [reservaQr, setReservaQr] = useState(null);
     const [qrUrl, setQrUrl] = useState("");
     const [errorQr, setErrorQr] = useState(false);
 
@@ -104,6 +170,50 @@ const MisReservas = () => {
 
         cargarReservas();
     }, [dispatch]);
+
+    //se pide al back la página que se está viendo. Se vuelve a pedir si cambia la página, el filtro
+    //o la lista de Redux (cambia al crear una reserva en el formulario, o al editar o eliminar acá)
+    useEffect(() => {
+        const controller = new AbortController();
+
+        const cargarPagina = async () => {
+            setCargandoPagina(true);
+            try {
+                const resultado = await listarReservasPaginadasApi(
+                    {
+                        pagina: paginaActual,
+                        limite: RESERVAS_POR_PAGINA,
+                        mascota: filtroMascota.trim() || undefined,
+                    },
+                    controller.signal
+                );
+                //si la página quedó vacía (ej: se eliminó la única reserva de la última página) se va a la anterior
+                if (resultado.reservas.length === 0 && paginaActual > 1) {
+                    setPaginaActual(paginaActual - 1);
+                    return;
+                }
+                setPagina({
+                    reservas: resultado.reservas,
+                    total: resultado.total,
+                    totalPaginas: resultado.totalPaginas,
+                });
+            } catch (error) {
+                //si se canceló porque cambiaron la página o el filtro, no es un error
+                if (error.code === "ERR_CANCELED") return;
+                console.error(error);
+                setMensajeError(obtenerMensajeError(error, "No se pudieron cargar las reservas."));
+            } finally {
+                if (!controller.signal.aborted) {
+                    setCargandoPagina(false);
+                }
+            }
+        };
+
+        cargarPagina();
+        return () => {
+            controller.abort();
+        };
+    }, [paginaActual, filtroMascota, reservas]);
 
     //al editar, cada vez que se elige un día se piden las horas ocupadas de ese día
     useEffect(() => {
@@ -169,14 +279,12 @@ const MisReservas = () => {
         setVista("eliminar");
     };
 
-    //botón "Editar" de la tabla: se pide la reserva al back (con los datos que no entran en la tabla)
+    //ícono del lápiz: se pide la reserva al back (con los datos que no entran en la tabla)
     //y se muestra completa, directamente en modo edición
     const verDetalle = async (reserva) => {
         setMensajeError("");
         setEditando(false);
         setReservaDetalle(null);
-        setQrUrl("");
-        setErrorQr(false);
         setVista("detalle");
         setCargando(true);
         try {
@@ -186,12 +294,16 @@ const MisReservas = () => {
         } catch (error) {
             console.error(error);
             setMensajeError(obtenerMensajeError(error, "No se pudo cargar la reserva."));
-            return;
         } finally {
             setCargando(false);
         }
+    };
 
-        //el QR se pide aparte: si falla, el detalle se sigue viendo igual
+    //ícono del QR: se abre la ventana con el QR agrandado y se pide la imagen al back
+    const abrirQr = async (reserva) => {
+        setReservaQr(reserva);
+        setQrUrl("");
+        setErrorQr(false);
         try {
             const imagenQr = await obtenerQrReservaApi(reserva.id);
             setQrUrl(URL.createObjectURL(imagenQr));
@@ -201,12 +313,16 @@ const MisReservas = () => {
         }
     };
 
+    const cerrarQr = () => {
+        setReservaQr(null);
+        setQrUrl("");
+    };
+
     //la lista ya tiene los cambios porque se actualizan en Redux al editar o eliminar
     const volverALista = () => {
         setMensajeError("");
         setReservaElegida(null);
         setReservaDetalle(null);
-        setQrUrl("");
         setEditando(false);
         setVista("lista");
     };
@@ -324,15 +440,14 @@ const MisReservas = () => {
         eliminar: "Eliminar reserva",
     };
 
-    //Logica de filtro de mascota
+    //el filtro de mascota se manda al back (que filtra antes de paginar); al cambiarlo se vuelve a la página 1
     const handlerFilter = (e) => {
         setFiltroMascota(e.target.value);
+        setPaginaActual(1);
     };
-    const reservasFiltradas = reservas.filter((reserva) =>
-        reserva.nombreMascota
-            .toLowerCase()
-            .includes(filtroMascota.toLowerCase()),
-    );
+
+    //números de página para los botones: [1, 2, 3, ...]
+    const numerosDePagina = Array.from({ length: pagina.totalPaginas }, (_, indice) => indice + 1);
 
     return (
         <section id="mis-reservas" className="booking-section">
@@ -344,7 +459,7 @@ const MisReservas = () => {
                 </div>
 
                 {vista === "lista" && (
-                    <div className="admin-card mx-auto mb-4">
+                    <div className="admin-card reservas-card mx-auto mb-4">
                         <label
                             className="booking-label"
                             htmlFor="filtroMascota"
@@ -363,7 +478,7 @@ const MisReservas = () => {
                     </div>
                 )}
 
-                <div className="booking-card admin-card">
+                <div className="booking-card admin-card reservas-card">
                     {mensajeError && (
                         <div className="alert alert-danger" role="alert">
                             {mensajeError}
@@ -373,17 +488,18 @@ const MisReservas = () => {
                     {/* Lista de reservas */}
                     {vista === "lista" && (
                         <>
-                            {cargando ? (
+                            {cargando || (cargandoPagina && pagina.reservas.length === 0) ? (
                                 <p className="mb-0">Cargando reservas...</p>
                             ) : reservas.length === 0 ? (
                                 <p className="mb-0">
                                     Todavía no tenés reservas.
                                 </p>
-                            ) : reservasFiltradas.length === 0 ? (
+                            ) : pagina.total === 0 ? (
                                 <p className="mb-0">
                                     No se encontraron reservas para esa mascota.
                                 </p>
                             ) : (
+                                <>
                                 <div className="table-responsive">
                                     <table className="table table-sm align-middle mb-0">
                                         <thead>
@@ -398,35 +514,48 @@ const MisReservas = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {reservasFiltradas.map((reserva) => (
+                                            {pagina.reservas.map((reserva) => (
                                                 <tr key={reserva.id}>
                                                     <td>{formatearFecha(reserva.fecha)}</td>
                                                     <td>{reserva.hora}</td>
                                                     <td className="text-capitalize">{reserva.categoriaId?.nombre}</td>
                                                     <td>{reserva.nombreMascota}</td>
                                                     {/* primeros 10 caracteres del motivo; al pasar el mouse se ve completo */}
-                                                    <td title={reserva.motivo}>{recortarTexto(reserva.motivo)}</td>
+                                                    <td title={reserva.motivoProfesional ?? reserva.motivo}>{recortarTexto(reserva.motivoProfesional ?? reserva.motivo)}</td>
                                                     <td className="text-capitalize">{reserva.estado}</td>
                                                     <td>
                                                         {/* una reserva que ya pasó no se puede editar ni eliminar */}
                                                         {reservaYaPaso(reserva.fecha, reserva.hora) ? (
                                                             <span className="d-block text-end text-muted small">Finalizada</span>
                                                         ) : (
+                                                            //acciones con íconos; el texto de "data-tooltip" aparece al pasar el mouse
                                                             <div className="d-flex gap-1 justify-content-end">
-                                                                {/* abre la reserva completa directamente en modo edición */}
                                                                 <button
-                                                                    className="btn btn-outline-success btn-sm"
+                                                                    className="btn btn-outline-secondary btn-sm accion-icono"
                                                                     type="button"
-                                                                    onClick={() => verDetalle(reserva)}
+                                                                    data-tooltip="Ver código QR"
+                                                                    aria-label="Ver código QR"
+                                                                    onClick={() => abrirQr(reserva)}
                                                                 >
-                                                                    Editar
+                                                                    <QrIcon />
                                                                 </button>
                                                                 <button
-                                                                    className="btn btn-outline-danger btn-sm"
+                                                                    className="btn btn-outline-success btn-sm accion-icono"
                                                                     type="button"
+                                                                    data-tooltip="Editar"
+                                                                    aria-label="Editar"
+                                                                    onClick={() => verDetalle(reserva)}
+                                                                >
+                                                                    <PencilIcon />
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-outline-danger btn-sm accion-icono"
+                                                                    type="button"
+                                                                    data-tooltip="Eliminar"
+                                                                    aria-label="Eliminar"
                                                                     onClick={() => abrirEliminar(reserva)}
                                                                 >
-                                                                    Eliminar
+                                                                    <TrashIcon />
                                                                 </button>
                                                             </div>
                                                         )}
@@ -436,6 +565,59 @@ const MisReservas = () => {
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {/* controles del paginado: solo aparecen si hay más de una página */}
+                                {pagina.totalPaginas > 1 && (
+                                    <nav
+                                        className="paginado-reservas d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"
+                                        aria-label="Páginas de reservas"
+                                    >
+                                        <small className="text-muted">
+                                            Página {paginaActual} de {pagina.totalPaginas} · {pagina.total} reservas
+                                        </small>
+
+                                        <ul className="pagination pagination-sm mb-0">
+                                            <li className={`page-item ${paginaActual === 1 ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link"
+                                                    type="button"
+                                                    disabled={paginaActual === 1}
+                                                    onClick={() => setPaginaActual(paginaActual - 1)}
+                                                >
+                                                    Anterior
+                                                </button>
+                                            </li>
+
+                                            {numerosDePagina.map((numero) => (
+                                                <li
+                                                    key={numero}
+                                                    className={`page-item ${numero === paginaActual ? "active" : ""}`}
+                                                >
+                                                    <button
+                                                        className="page-link"
+                                                        type="button"
+                                                        aria-current={numero === paginaActual ? "page" : undefined}
+                                                        onClick={() => setPaginaActual(numero)}
+                                                    >
+                                                        {numero}
+                                                    </button>
+                                                </li>
+                                            ))}
+
+                                            <li className={`page-item ${paginaActual === pagina.totalPaginas ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link"
+                                                    type="button"
+                                                    disabled={paginaActual === pagina.totalPaginas}
+                                                    onClick={() => setPaginaActual(paginaActual + 1)}
+                                                >
+                                                    Siguiente
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                )}
+                                </>
                             )}
                         </>
                     )}
@@ -582,34 +764,31 @@ const MisReservas = () => {
                                         )}
                                     </dd>
 
-                                    <dt className="col-sm-4">Motivo</dt>
+                                    {/* lo que se muestra es el motivo profesional que genera la IA (no se edita) */}
+                                    <dt className="col-sm-4">Motivo profesional</dt>
                                     <dd className="col-sm-8">
-                                        {editando ? (
-                                            <textarea
-                                                className="form-control form-control-sm"
-                                                name="motivo"
-                                                aria-label="Motivo de la consulta"
-                                                rows="3"
-                                                maxLength="200"
-                                                value={valoresEdicion.motivo}
-                                                onChange={handleChangeEdicion}
-                                            />
-                                        ) : (
-                                            reservaDetalle.motivo
+                                        {reservaDetalle.motivoProfesional ?? reservaDetalle.motivo}
+                                        {editando && (
+                                            <div className="form-text">
+                                                Se vuelve a generar si cambiás el motivo de la consulta.
+                                            </div>
                                         )}
                                     </dd>
 
-                                    {/* el back reescribe el motivo con IA para el veterinario; no se edita */}
-                                    {reservaDetalle.motivoProfesional && (
+                                    {/* el motivo que escribió el cliente solo aparece al editar, para poder cambiarlo */}
+                                    {editando && (
                                         <>
-                                            <dt className="col-sm-4">Motivo profesional</dt>
+                                            <dt className="col-sm-4">Motivo de la consulta</dt>
                                             <dd className="col-sm-8">
-                                                {reservaDetalle.motivoProfesional}
-                                                {editando && (
-                                                    <div className="form-text">
-                                                        Se vuelve a generar si cambiás el motivo.
-                                                    </div>
-                                                )}
+                                                <textarea
+                                                    className="form-control form-control-sm"
+                                                    name="motivo"
+                                                    aria-label="Motivo de la consulta"
+                                                    rows="3"
+                                                    maxLength="200"
+                                                    value={valoresEdicion.motivo}
+                                                    onChange={handleChangeEdicion}
+                                                />
                                             </dd>
                                         </>
                                     )}
@@ -634,29 +813,6 @@ const MisReservas = () => {
                                             </dd>
                                         </>
                                     )}
-
-                                    {/* QR con el id de la reserva para mostrar en recepción (se ve también al editar, pero no se edita) */}
-                                    <dt className="col-sm-4">Código QR</dt>
-                                    <dd className="col-sm-8">
-                                        {qrUrl ? (
-                                            <>
-                                                <img
-                                                    className="img-thumbnail"
-                                                    src={qrUrl}
-                                                    width="160"
-                                                    height="160"
-                                                    alt={`Código QR de la reserva de ${reservaDetalle.nombreMascota}`}
-                                                />
-                                                <div className="form-text">
-                                                    Presentalo en recepción el día de la consulta.
-                                                </div>
-                                            </>
-                                        ) : errorQr ? (
-                                            <span className="text-danger">No se pudo generar el código QR.</span>
-                                        ) : (
-                                            <span className="text-muted">Generando código QR...</span>
-                                        )}
-                                    </dd>
                                 </dl>
                             )}
 
@@ -735,6 +891,64 @@ const MisReservas = () => {
                     )}
                 </div>
             </div>
+
+            {/* QR agrandado (ícono del QR de la tabla); se cierra con la cruz o haciendo clic afuera */}
+            {reservaQr && (
+                <>
+                    {/* el div.modal ocupa toda la pantalla: si el clic cae afuera del cuadro, se cierra */}
+                    <div
+                        className="modal fade show d-block"
+                        tabIndex="-1"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="qrModalTitle"
+                        onClick={(e) => e.target === e.currentTarget && cerrarQr()}
+                    >
+                        <div className="modal-dialog modal-dialog-centered modal-sm">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h2 id="qrModalTitle" className="modal-title fs-5">
+                                        Código QR
+                                    </h2>
+                                    <button
+                                        className="btn-close"
+                                        type="button"
+                                        aria-label="Cerrar"
+                                        onClick={cerrarQr}
+                                    />
+                                </div>
+
+                                <div className="modal-body text-center">
+                                    <p className="mb-3">
+                                        Reserva de {reservaQr.nombreMascota} del {formatearFecha(reservaQr.fecha)} a las {reservaQr.hora}
+                                    </p>
+
+                                    {qrUrl ? (
+                                        <>
+                                            <img
+                                                className="img-thumbnail"
+                                                src={qrUrl}
+                                                width="250"
+                                                height="250"
+                                                alt={`Código QR de la reserva de ${reservaQr.nombreMascota}`}
+                                            />
+                                            <p className="form-text mb-0 mt-2">
+                                                Presentalo en recepción el día de la consulta.
+                                            </p>
+                                        </>
+                                    ) : errorQr ? (
+                                        <p className="text-danger mb-0">No se pudo generar el código QR.</p>
+                                    ) : (
+                                        <p className="text-muted mb-0">Generando código QR...</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="modal-backdrop fade show" onClick={cerrarQr} />
+                </>
+            )}
         </section>
     );
 };
