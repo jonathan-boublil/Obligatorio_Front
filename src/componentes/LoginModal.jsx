@@ -44,7 +44,6 @@ const LoginModal = ({onLogin}) => {
             });
             const token = resultado.token;
 
-            console.log("token", token);
             window.localStorage.setItem("token", token);
 
             //se guardan los datos del usuario que se muestran en el front

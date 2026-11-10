@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { agendaDelDiaApi } from "../services/reservaServices";
 import { formatearFecha, fechaParaBack, reservaYaPaso } from "../services/fechasReserva";
+import { cargarAgendaSlice } from "../redux/features/reservasSlice";
 
 // Agenda del día para el admin: todas las reservas de la fecha elegida
 const Agenda = () => {
+    const dispatch = useDispatch();
+    const reservas = useSelector((state) => state.reservaSlice.agenda);
+
     const [fecha, setFecha] = useState(formatearFecha(new Date()));
-    const [reservas, setReservas] = useState([]);
     const [cargando, setCargando] = useState(false);
     const [mensajeError, setMensajeError] = useState("");
 
     //cada vez que cambia el día se piden las reservas de ese día
     useEffect(() => {
         if (!fecha) {
-            setReservas([]);
+            dispatch(cargarAgendaSlice([]));
             return;
         }
 
@@ -22,18 +26,18 @@ const Agenda = () => {
             setCargando(true);
             try {
                 const lista = await agendaDelDiaApi(fechaParaBack(fecha));
-                setReservas(lista);
+                dispatch(cargarAgendaSlice(lista));
             } catch (error) {
                 console.error(error);
                 setMensajeError(obtenerMensajeError(error, "No se pudo cargar la agenda."));
-                setReservas([]);
+                dispatch(cargarAgendaSlice([]));
             } finally {
                 setCargando(false);
             }
         };
 
         cargarAgenda();
-    }, [fecha]);
+    }, [fecha, dispatch]);
 
     return (
         <section id="agenda" className="booking-section">
