@@ -636,6 +636,50 @@ img {
   max-width: 900px;
 }
 
+/* Informes y Clientes del admin uno al lado del otro.
+   .admin-fila pinta el fondo de lado a lado; .admin-fila-grid tiene el mismo ancho que las otras secciones */
+.admin-fila {
+  background-color: var(--color-section-background);
+}
+
+.admin-fila-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-right: 22px;
+  padding-left: 22px;
+}
+
+/* min-width: 0 deja que la tabla de clientes use su scroll horizontal en lugar de ensanchar la columna */
+.admin-fila-grid > * {
+  min-width: 0;
+}
+
+/* dentro de la fila, cada sección usa todo el ancho de su columna (sin el padding de su propio container) */
+.admin-fila-grid .booking-section .container {
+  max-width: none;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.admin-fila-grid .admin-card {
+  max-width: none;
+}
+
+@media (min-width: 992px) {
+  .admin-fila-grid {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  /* en pantalla grande el gráfico va a la derecha de Clientes (en celular sigue quedando arriba) */
+  .admin-fila-grid > #informes {
+    order: 2;
+  }
+}
+
 /* Mis reservas: ocupa todo el ancho del contenedor, igual que la sección de veterinarios */
 .reservas-card {
   max-width: none;

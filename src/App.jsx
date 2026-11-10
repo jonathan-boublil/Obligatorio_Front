@@ -65,10 +65,18 @@ function App({ modalActivo }) {
         <Inicio estaLogueado={estaLogueado} />
         {esCliente && <Reserva usuario={usuario} />}
         {esCliente && <MisReservas />}
-        {esAdmin && <Clientes />}
+        {/* el gráfico va al lado de Clientes: tildando clientes en la lista se ven solo sus reservas
+            (en pantallas grandes van en dos columnas; en celular uno debajo del otro) */}
+        {esAdmin && (
+          <div className="admin-fila">
+            <div className="admin-fila-grid">
+              <Informes />
+              <Clientes />
+            </div>
+          </div>
+        )}
         {esAdmin && <Categorias />}
         {esAdmin && <Agenda />}
-        {esAdmin && <Informes />}
         <Contacto />
       </main>
     </>
