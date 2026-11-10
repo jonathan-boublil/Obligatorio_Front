@@ -1,7 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-    lista: [],
+  lista: [],
+  agenda: [],
+  informe: [],
 };
 
 // reservas del cliente logueado: las usa Reserva (para el límite anual del plan) y MisReservas (la lista)
@@ -33,10 +35,45 @@ const reservaSlice = createSlice({
         limpiarReservasSlice: () => {
             return initialState;
         },
+        cargarAgendaSlice: (state, action) => {
+            state.agenda = action.payload;
+        },
+
+        cargarInformeSlice: (state, action) => {
+            state.informe = action.payload;
+        },
+
+        renombrarCategoriaEnReservasSlice: (state, action) => {
+            const { nombreAnterior, nombreNuevo } = action.payload;
+
+            state.agenda.forEach((reserva) => {
+                if (reserva.categoriaId?.nombre === nombreAnterior) {
+                    reserva.categoriaId.nombre = nombreNuevo;
+                }
+            });
+            state.informe.forEach((categoria) => {
+                if (categoria.nombre === nombreAnterior) {
+                    categoria.nombre = nombreNuevo;
+                }
+            });
+            state.lista.forEach((reserva) => {
+                if (reserva.categoriaId?.nombre === nombreAnterior) {
+                    reserva.categoriaId.nombre = nombreNuevo;
+                }
+            });
+        },
     },
 });
 
 
-export const { cargarReservasInicialesSlice, agregarReservaSlice, actualizarReservaSlice, eliminarReservaSlice, limpiarReservasSlice } =
-    reservaSlice.actions;
+export const {
+  cargarReservasInicialesSlice,
+  agregarReservaSlice,
+  actualizarReservaSlice,
+  eliminarReservaSlice,
+  limpiarReservasSlice,
+  cargarAgendaSlice,
+  cargarInformeSlice,
+  renombrarCategoriaEnReservasSlice,
+} = reservaSlice.actions;
 export default reservaSlice.reducer;

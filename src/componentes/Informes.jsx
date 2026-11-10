@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Grafica from "./Grafica";
 import { informeReservasPorCategoriaApi } from "../services/reservaServices";
 import { obtenerMensajeError } from "../services/mensajeError";
+import { cargarInformeSlice } from "../redux/features/reservasSlice";
 
 const reduceReservas = (acumulador, reserva) => {
   const categoria = reserva.categoriaId?.nombre;
@@ -11,7 +13,7 @@ const reduceReservas = (acumulador, reserva) => {
   }
 
   if (acumulador[categoria]) {
-    acumulador[categoria] = acumulador[categoria] + 1;
+    acumulador[categoria] += 1;
   } else {
     acumulador[categoria] = 1;
   }
@@ -20,26 +22,38 @@ const reduceReservas = (acumulador, reserva) => {
 };
 
 const Informes = () => {
-  const [listaReservas, setListaReservas] = useState([]);
-  const [datos, setDatos] = useState([]);
-  const [etiquetas, setEtiquetas] = useState([]);
+  const dispatch = useDispatch();
+  const informe = useSelector(
+    (state) => state.reservaSlice.informe,
+  );
+
   const [cargando, setCargando] = useState(false);
   const [mensajeError, setMensajeError] = useState("");
 
-  // Se obtienen las reservas cuando se muestra Informes
   useEffect(() => {
     const cargarInforme = async () => {
       setMensajeError("");
       setCargando(true);
 
       try {
-        const reservas =
-          await informeReservasPorCategoriaApi();
+        const reservas = await informeReservasPorCategoriaApi();
+        const reservasPorCategoria = reservas.reduce(
+          reduceReservas,
+          {},
+        );
 
-        setListaReservas(reservas);
+        //Redux guarda solamente los datos que necesita la gráfica.
+        const datosInforme = Object.entries(
+          reservasPorCategoria,
+        ).map(([nombre, cantidad]) => ({
+          nombre,
+          cantidad,
+        }));
+
+        dispatch(cargarInformeSlice(datosInforme));
       } catch (error) {
         console.error(error);
-
+        dispatch(cargarInformeSlice([]));
         setMensajeError(
           obtenerMensajeError(
             error,
@@ -52,30 +66,17 @@ const Informes = () => {
     };
 
     cargarInforme();
-  }, []);
+  }, [dispatch]);
 
+  const etiquetas = informe.map(
+    (categoria) =>
+      categoria.nombre.charAt(0).toUpperCase() +
+      categoria.nombre.slice(1),
+  );
 
-  // Se reducen las reservas a un objeto con categoría y cantidad
-  useEffect(() => {
-    const reservasPorCategoria = listaReservas.reduce(
-      reduceReservas,
-      {},
-    );
-
-    const nombresCategorias = Object.keys(
-      reservasPorCategoria,
-    );
-
-    const etiquetasAux = nombresCategorias.map(
-      (nombre) =>
-        nombre.charAt(0).toUpperCase() + nombre.slice(1),
-    );
-
-    const datosAux = Object.values(reservasPorCategoria);
-
-    setEtiquetas(etiquetasAux);
-    setDatos(datosAux);
-  }, [listaReservas]);
+  const datos = informe.map(
+    (categoria) => categoria.cantidad,
+  );
 
   return (
     <section id="informes" className="booking-section">

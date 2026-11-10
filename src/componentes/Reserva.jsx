@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { cargaInicialCategoriasSlice } from "../redux/features/categoriasSlice";
-import { cargarReservasInicialesSlice, agregarReservaSlice } from "../redux/features/reservasSlice";
+import { agregarReservaSlice } from "../redux/features/reservasSlice";
 import { obtenerMensajeError } from "../services/mensajeError";
 import { listarCategoriasApi, crearReservaApi, horariosOcupadosApi } from "../services/reservaServices";
-import { listarReservasApi } from "../services/userServices";
 import { horarios, fechaParaBack, fechaDelBack, obtenerFechasDisponibles, validarFecha, estaOcupado } from "../services/fechasReserva";
 import { validarEdadMascota } from "../services/validacionesReserva";
 import SubirImagen from "./SubirImagen";
@@ -89,7 +88,8 @@ const camposPorPaso = {
 };
 
 // se dibuja la reserva por primera vez
-// las categorías y las reservas del usuario vienen de Redux (acá se cargan al mostrar el formulario)
+// las categorías y las reservas del usuario vienen de Redux.
+// MisReservas realiza una única carga inicial de las reservas para todo el dashboard.
 const Reserva = ({ usuario }) => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -124,20 +124,6 @@ const Reserva = ({ usuario }) => {
             }
         };
         cargarCategorias();
-    }, [dispatch]);
-
-    //se piden las reservas del usuario para saber cuántas tiene en cada año (límite del plan)
-    useEffect(() => {
-        const cargarReservas = async () => {
-            try {
-                const lista = await listarReservasApi();
-                dispatch(cargarReservasInicialesSlice(lista));
-            } catch (error) {
-                //si falla no se bloquea el formulario: el back igual valida el límite al confirmar
-                console.error(error);
-            }
-        };
-        cargarReservas();
     }, [dispatch]);
 
     //cada vez que se elige un día se piden las horas ocupadas, así no se intenta reservar una que ya está tomada

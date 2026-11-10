@@ -25,7 +25,6 @@ const Clientes = () => {
             } catch (error) {
                 //si se canceló porque el componente se destruyó, no es un error a mostrar
                 if (error.code === "ERR_CANCELED") {
-                    console.log("Petición cancelada");
                     return;
                 }
                 console.error(error);
