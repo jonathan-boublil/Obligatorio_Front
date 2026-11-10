@@ -636,6 +636,78 @@ img {
   max-width: 900px;
 }
 
+/* Mis reservas: ocupa todo el ancho del contenedor, igual que la sección de veterinarios */
+.reservas-card {
+  max-width: none;
+}
+
+/* Paginado de Mis reservas con los colores de la app (Bootstrap usa azul por defecto) */
+.paginado-reservas .page-link {
+  color: var(--color-primary);
+}
+
+.paginado-reservas .page-item.active .page-link {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+/* Botones de acción con ícono (QR, editar, eliminar) y su tooltip */
+.accion-icono {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.accion-icono svg {
+  width: 18px;
+  height: 18px;
+}
+
+.accion-icono[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background-color: var(--color-heading);
+  color: var(--color-white);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+}
+
+.accion-icono[data-tooltip]:hover::after,
+.accion-icono[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
+/* el último botón está pegado al borde de la tabla: su tooltip se alinea a la derecha
+   para no salirse (aunque esté invisible ocupa lugar y generaba scroll horizontal) */
+.accion-icono:last-child[data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* en pantallas grandes la tabla de Mis reservas entra entera: sin scroll y sin cortar los tooltips.
+   En celular se mantiene el scroll horizontal de .table-responsive */
+@media (min-width: 992px) {
+  .reservas-card .table-responsive {
+    overflow: visible;
+  }
+}
+
 .booking-field {
   margin-bottom: 20px;
 }

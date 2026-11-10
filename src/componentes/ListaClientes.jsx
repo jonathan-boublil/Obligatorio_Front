@@ -157,13 +157,13 @@ const ListaClientes = () => {
 
             <div className="booking-field">
                 <label className="booking-label" htmlFor={idInputFiltro}>
-                    Filtrar por nombre de usuario
+                    Filtrar por usuario
                 </label>
                 <input
                     id={idInputFiltro}
                     className="form-control booking-input"
                     type="text"
-                    placeholder="Escribí el nombre de usuario"
+                    placeholder="Usuario"
                     onChange={handlerFilter}
                 />
             </div>

@@ -30,6 +30,17 @@ export const listarReservasApi = async () => {
     return resultado.data;
 }
 
+// una página de reservas del usuario logueado (las más nuevas primero), filtradas por mascota si viene el texto.
+// Con pagina y limite el back responde { reservas, pagina, limite, total, totalPaginas } en lugar de un array
+// el signal permite cancelar la petición si cambian la página o el filtro antes de que responda
+export const listarReservasPaginadasApi = async ({ pagina, limite, mascota }, signal) => {
+    const resultado = await api.get("/reservas", {
+        params: { pagina, limite, mascota },
+        signal: signal
+    });
+    return resultado.data;
+}
+
 // todos los clientes, solo para admin
 // el signal permite cancelar la petición si el componente se destruye antes de que responda
 export const listarClientesApi = async (signal) => {
