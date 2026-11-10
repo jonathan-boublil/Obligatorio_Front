@@ -8,7 +8,6 @@ const usersSlice = createSlice({
     reducers: {
         cargaInicialUsersSlice: (state, action) => {
             const listaUsuarios = action.payload;
-            // console.log('listaUsuarios', listaUsuarios)
             return listaUsuarios;
         },
         crearUserSlice: (state, action) => {

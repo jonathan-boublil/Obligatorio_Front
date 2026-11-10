@@ -4,6 +4,7 @@ import {
   cargaInicialCategoriasSlice, crearCategoriaSlice,
   actualizarCategoriaSlice, eliminarCategoriaSlice
 } from "../redux/features/categoriasSlice";
+import { renombrarCategoriaEnReservasSlice } from "../redux/features/reservasSlice";
 import { obtenerMensajeError } from "../services/mensajeError";
 import {
   listarCategoriasApi, crearCategoriaApi, obtenerCategoriaApi,
@@ -135,12 +136,23 @@ const Categorias = () => {
     Object.keys(camposCambiados).length > 0;
 
   const guardarCategoria = async () => {
+    const nombreAnterior = categoriaOriginal?.nombre;
+
     setMensajeError("");
     setProcesandoFila(true);
     try {
       const categoriaEditada = await editarCategoriaApi(editandoId, camposCambiados);
       //se reemplaza en Redux con lo que devolvió el back
       dispatch(actualizarCategoriaSlice(categoriaEditada));
+
+      //Agenda, Informes y las reservas visibles cambian sin volver a pedir las listas a la API
+      if (nombreAnterior && nombreAnterior !== categoriaEditada.nombre) {
+        dispatch(renombrarCategoriaEnReservasSlice({
+          nombreAnterior,
+          nombreNuevo: categoriaEditada.nombre,
+        }));
+      }
+
       setEditandoId(null);
     } catch (error) {
       //si falla la fila sigue en edición para poder corregir

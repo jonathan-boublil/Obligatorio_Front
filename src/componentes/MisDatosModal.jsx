@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerMensajeError } from "../services/mensajeError";
-import { cambiarPlanApi, obtenerUsuarioApi, editarUsuarioApi, eliminarCuentaApi } from "../services/userServices";
+import {
+  obtenerUsuarioApi,
+  editarUsuarioApi,
+  eliminarCuentaApi,
+} from "../services/userServices";
+import CambiarPlan from "./CambiarPlan";
 import InformeUsoPlan from "./InformeUsoPlan";
 
 const datosVacios = {
@@ -71,8 +76,6 @@ const MisDatosModal = ({ usuario, onActualizarUsuario, onLogout }) => {
   }, []);
 
   const esPremium = usuario.plan?.toLowerCase() === "premium";
-  // el botón siempre ofrece pasarse al otro plan
-  const planDestino = esPremium ? "plus" : "premium";
 
   const cerrarModal = () => {
     navigate("/");
@@ -88,19 +91,9 @@ const MisDatosModal = ({ usuario, onActualizarUsuario, onLogout }) => {
     irAVista("datos");
   };
 
-  const aceptarCambioPlan = async () => {
-    setMensajeError("");
-    setCargando(true);
-    try {
-      const usuarioActualizado = await cambiarPlanApi(planDestino);
-      onActualizarUsuario({ ...usuario, plan: usuarioActualizado.plan });
-      setVista("datos");
-    } catch (error) {
-      console.error(error);
-      setMensajeError(obtenerMensajeError(error, "No se pudo cambiar el plan."));
-    } finally {
-      setCargando(false);
-    }
+  const planCambiado = (usuarioActualizado) => {
+    onActualizarUsuario(usuarioActualizado);
+    setVista("datos");
   };
 
   //el formulario arranca con los datos actuales del usuario
@@ -230,13 +223,15 @@ const MisDatosModal = ({ usuario, onActualizarUsuario, onLogout }) => {
                     <dt className="col-sm-4">Plan</dt>
                     <dd className="col-sm-8 d-flex align-items-center gap-2">
                       <span className="text-capitalize">{usuario.plan}</span>
-                      <button
-                        className="btn btn-outline-success btn-sm"
-                        type="button"
-                        onClick={() => irAVista("confirmarPlan")}
-                      >
-                        Pasar a {planDestino}
-                      </button>
+                      {!esPremium && (
+                        <button
+                          className="btn btn-outline-success btn-sm"
+                          type="button"
+                          onClick={() => irAVista("confirmarPlan")}
+                        >
+                          Pasar a Premium
+                        </button>
+                      )}
                     </dd>
                   </dl>
                   <InformeUsoPlan plan={usuario.plan} />
@@ -354,28 +349,10 @@ const MisDatosModal = ({ usuario, onActualizarUsuario, onLogout }) => {
 
               {/* Confirmación de cambio de plan */}
               {vista === "confirmarPlan" && (
-                <>
-                  <p>¿Quiere pasarse a plan {planDestino}?</p>
-
-                  <div className="d-flex justify-content-end gap-2">
-                    <button
-                      className="btn btn-outline-secondary"
-                      type="button"
-                      disabled={cargando}
-                      onClick={volverADatos}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      className="btn btn-success"
-                      type="button"
-                      disabled={cargando}
-                      onClick={aceptarCambioPlan}
-                    >
-                      {cargando ? "Cambiando..." : "Aceptar"}
-                    </button>
-                  </div>
-                </>
+                <CambiarPlan
+                  onPlanCambiado={planCambiado}
+                  onCancelar={volverADatos}
+                />
               )}
             </div>
           </div>
